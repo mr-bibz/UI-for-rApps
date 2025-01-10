@@ -108,14 +108,11 @@ services:
       - nifi
       - spark-master
       - spark-worker
+    environment:
+      - PORT=3000
+      - NIFI_BASE_URL=http://nifi:8080/nifi-api
+      - KAFKA_BROKER=kafka:9092
+      - SPARK_MASTER=spark://spark-master:7077
+      - MONGODB_URL=mongodb://mongodb:27017/ml-pipelines
     ports:
       - "3000:3000"
-    networks:
-      - ml-net
-
-volumes:
-  mongodb_data:
-
-networks:
-  ml-net:
-    driver: bridge

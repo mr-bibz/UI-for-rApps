@@ -14,7 +14,7 @@ exports.produceMessage = async (req, res) => {
     });
     return res.json({ success: true, topic, message });
   } catch (error) {
-    console.error('[Kafka] Produce error:', error);
+    console.error('[Kafka] produceMessage error:', error.message);
     return res.status(500).json({ error: error.message });
   }
 };

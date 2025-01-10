@@ -1,14 +1,20 @@
 // routes/mlPipelineRoutes.js
 const express = require('express');
-const router = express.Router();
 const {
-  trainPipeline,
-  getAllModels,
-  getModelById
+  runPipeline,
+  nifiCallback,
+  getPipelineStatus
 } = require('../controllers/mlPipelineController');
 
-router.post('/train', trainPipeline);
-router.get('/models', getAllModels);
-router.get('/models/:id', getModelById);
+const router = express.Router();
+
+// rApp calls => starts NiFi flow => store pipeline run
+router.post('/run', runPipeline);
+
+// NiFi callback => triggers Spark => store model
+router.post('/nifi/callback', nifiCallback);
+
+// Optional to check pipeline run status
+router.get('/status/:pipelineId', getPipelineStatus);
 
 module.exports = router;

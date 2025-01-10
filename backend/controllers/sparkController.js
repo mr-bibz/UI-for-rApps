@@ -12,7 +12,7 @@ exports.trainSparkModel = (req, res) => {
 
   exec(sparkCmd, (error, stdout, stderr) => {
     if (error) {
-      console.error('[Spark] Train error:', error.message);
+      console.error('[Spark] trainSparkModel error:', error.message);
       return res.status(500).json({ error: error.message });
     }
     // For demonstration, just returning logs

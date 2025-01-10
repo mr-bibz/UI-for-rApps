@@ -1,53 +1,15 @@
 // controllers/mlPipelineController.js
-const { exec } = require('child_process');
-const { SPARK_MASTER } = require('../config');
-const MLModel = require('../models/MLModel');
 const axios = require('axios');
-const { NIFI_BASE_URL } = require('../config');
+const { exec } = require('child_process');
+const { NIFI_BASE_URL, SPARK_MASTER } = require('../config');
+const MLModel = require('../models/MLModel');
+const { getKafkaProducer } = require('../utils/kafkaClient');
 
-/**
- * Orchestrate an entire training pipeline.
- */
-exports.trainPipeline = async (req, res) => {
-  const { processGroupId, modelName, version } = req.body;
-  try {
-    // 1) Start NiFi flow
-    if (processGroupId) {
-      const startFlowUrl = `${NIFI_BASE_URL}/flow/process-groups/${processGroupId}`;
-      await axios.put(startFlowUrl, { id: processGroupId, state: 'RUNNING' });
-      console.log('[NiFi] Flow started:', processGroupId);
-    }
+// In-memory pipeline run state
+const pipelineRuns = {}; // e.g. pipelineRuns[pipelineId] = { processGroupId, kafkaTopic, modelName, version, status }
 
-    // 2) Spark training
-    const sparkCmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/train_model.py --modelName ${modelName} --version ${version}`;
-    const output = await runCmdAsync(sparkCmd);
-    console.log('[Spark] Training completed:', output);
-
-    // 3) Store model info in MongoDB
-    const accuracy = 0.95;  // In real code, parse from Spark logs
-    const newModel = await MLModel.create({
-      name: modelName,
-      version,
-      accuracy,
-      artifactPath: `/usr/src/app/models/${modelName}_${version}`
-    });
-    console.log('[MLPipeline] Model stored:', newModel._id);
-
-    return res.json({
-      success: true,
-      sparkOutput: output,
-      modelId: newModel._id
-    });
-  } catch (error) {
-    console.error('[MLPipeline] Error:', error);
-    return res.status(500).json({ error: error.message });
-  }
-};
-
-/**
- * Utility to run a shell command with Promise
- */
-function runCmdAsync(cmd) {
+// Utility to run spark-submit
+function runCommand(cmd) {
   return new Promise((resolve, reject) => {
     exec(cmd, (err, stdout, stderr) => {
       if (err) return reject(err);
@@ -56,23 +18,105 @@ function runCmdAsync(cmd) {
   });
 }
 
-// GET all models
-exports.getAllModels = async (req, res) => {
+// 1) rApp starts pipeline => NiFi flow => store run in memory
+exports.runPipeline = async (req, res) => {
+  // Body: { pipelineId, processGroupId, kafkaTopic, modelName, version }
+  const { pipelineId, processGroupId, kafkaTopic, modelName, version } = req.body;
+  if (!pipelineId) {
+    return res.status(400).json({ error: 'pipelineId is required' });
+  }
   try {
-    const models = await MLModel.find().sort({ createdAt: -1 });
-    return res.json(models);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+    // Start NiFi flow
+    if (processGroupId) {
+      await axios.put('${NIFI_BASE_URL}/flow/process-groups/${processGroupId}', {
+        id: processGroupId,
+        state: 'RUNNING'
+      });
+      console.log('[NiFi] Flow started => PG=${processGroupId}');
+    }
+    // Produce Kafka message (optional)
+    if (kafkaTopic) {
+      const producer = await getKafkaProducer();
+      await producer.send({
+        topic: kafkaTopic,
+        messages: [{ value: 'Starting data ingestion for pipeline...' }]
+      });
+      console.log('[Kafka] produced to ${kafkaTopic}');
+    }
+    // Store pipeline info
+    pipelineRuns[pipelineId] = {
+      processGroupId,
+      kafkaTopic,
+      modelName,
+      version,
+      status: 'NiFi flow started'
+    };
+    // Return immediately
+    res.json({
+      success: true,
+      message: 'Pipeline run initiated. NiFi will callback once ingestion completes.',
+      pipelineId
+    });
+  } catch (error) {
+    console.error('[Pipeline] runPipeline error:', error.message);
+    res.status(500).json({ error: error.message });
   }
 };
 
-// GET a specific model by ID
-exports.getModelById = async (req, res) => {
-  try {
-    const model = await MLModel.findById(req.params.id);
-    if (!model) return res.status(404).json({ error: 'Model not found' });
-    return res.json(model);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+// 2) NiFi callback => POST /api/ml-pipeline/nifi/callback
+// Body: { pipelineId }
+exports.nifiCallback = async (req, res) => {
+  const { pipelineId } = req.body;
+  if (!pipelineId) {
+    return res.status(400).json({ error: 'pipelineId is required in NiFi callback' });
   }
+  const run = pipelineRuns[pipelineId];
+  if (!run) {
+    return res.status(404).json({ error: 'No pipeline run found for that pipelineId' });
+  }
+  try {
+    run.status = 'NiFi ingestion complete';
+    console.log('[NiFi Callback] pipelineId=${pipelineId} => ingestion done');
+
+    // Now trigger Spark job
+    const { modelName, version} = run;
+    const sparkCmd = 'spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/train_model.py --modelName ${modelName} --version ${version}';
+    const sparkResult = await runCommand(sparkCmd);
+    console.log('[Spark] logs:', sparkResult.stdout);
+
+    // Suppose accuracy=0.95, parse from logs if needed
+    const accuracy = 0.95;
+    const artifactPath = '/usr/src/app/models/${modelName}_${version}';
+    const newModel = await MLModel.create({
+      name: modelName,
+      version,
+      accuracy,
+      artifactPath
+    });
+
+    run.status = 'Spark job complete';
+    run.modelId = newModel._id;
+    console.log('[MLPipeline] Model stored =>', newModel._id);
+
+    // Return success to NiFi
+    res.json({
+      success: true,
+      pipelineId,
+      sparkLogs: sparkResult.stdout,
+      modelId: newModel._id
+    });
+  } catch (error) {
+    console.error('[NiFi Callback] spark job error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// (Optional) pipeline run status
+exports.getPipelineStatus = (req, res) => {
+  const { pipelineId } = req.params;
+  const run = pipelineRuns[pipelineId];
+  if (!run) {
+    return res.status(404).json({ error: 'No pipeline found for that ID' });
+  }
+  res.json({ pipelineId, status: run.status, modelId: run.modelId || null });
 };

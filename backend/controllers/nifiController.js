@@ -18,7 +18,7 @@ exports.getNiFiStatus = async (req, res) => {
 /**
  * Start NiFi flow for a given processGroupId
  */
-exports.startFlow = async (req, res) => {
+exports.updateFlowState = async (req, res) => {
   const { processGroupId } = req.body;
   try {
     const url = `${NIFI_BASE_URL}/flow/process-groups/${processGroupId}`;
@@ -26,7 +26,7 @@ exports.startFlow = async (req, res) => {
     const response = await axios.put(url, payload);
     res.json({ success: true, data: response.data });
   } catch (error) {
-    console.error('[NiFi] Start flow error:', error);
+    console.error('[NiFi] updateFlowState error:', error.message);
     res.status(500).json({ error: error.message });
   }
 };

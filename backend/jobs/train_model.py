@@ -4,8 +4,8 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--modelName', type=str, default='myModel')
-    parser.add_argument('--version', type=str, default='v0.1')
+    parser.add_argument('--modelName', type=str, default='demoModel')
+    parser.add_argument('--version', type=str, default='v1')
     args = parser.parse_args()
 
     # Simulate training
