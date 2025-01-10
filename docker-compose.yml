@@ -9,8 +9,6 @@ services:
       - ZOO_ENABLE_AUTH=yes
     ports:
       - "2181:2181"
-    networks:
-      - ml-net
 
   ########################################
   # KAFKA
@@ -31,8 +29,6 @@ services:
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
     ports:
       - "9092:9092"
-    networks:
-      - ml-net
 
   ########################################
   # MONGODB
@@ -44,8 +40,6 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
-    networks:
-      - ml-net
 
   ########################################
   # NIFI
@@ -59,8 +53,6 @@ services:
       - NIFI_JVM_HEAP_MAX=4G
     ports:
       - "8080:8080"
-    networks:
-      - ml-net
 
   ########################################
   # SPARK MASTER
@@ -74,8 +66,6 @@ services:
     ports:
       - "8081:8080"  # Spark master web UI
       - "7077:7077"  # Spark master RPC port
-    networks:
-      - ml-net
 
   ########################################
   # SPARK WORKER
@@ -91,8 +81,6 @@ services:
       - SPARK_WORKER_MEMORY=2G
     ports:
       - "8082:8080"
-    networks:
-      - ml-net
 
   ########################################
   # BACKEND
