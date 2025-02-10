@@ -2,6 +2,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { MONGODB_URL, PORT } = require('./config');
+
 const nifiRoutes = require('./routes/nifiRoutes');
 const kafkaRoutes = require('./routes/kafkaRoutes');
 const sparkRoutes = require('./routes/sparkRoutes');
