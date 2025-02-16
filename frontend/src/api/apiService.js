@@ -52,4 +52,4 @@ export const fetchMlPipelines = () => axios.get('${API_BASE_URL}/ml-pipeline');
 /**
  * Fetch ML pipeline Endpoints
  */
-export const deleteMlpipeline = (pipelineId) => axios.delete('${API_BASE_URL}/ml-pipeline/${pipelineId}');
+export const deleteMlPipeline = (pipelineId) => axios.delete('${API_BASE_URL}/ml-pipeline/${pipelineId}');
