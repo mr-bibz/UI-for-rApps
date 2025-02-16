@@ -1,7 +1,7 @@
 // src/components/PipelineHealthStatus.jsx
 import React, { useEffect, useState } from 'react';
 import { fetchPipelineHealth } from '../api/apiService';
-import { Grid, Paper, Typography } from '@mui/material';
+import { Grid2, Paper, Typography } from '@mui/material';
 
 const PipelineHealthStatus = () => {
   const [healthData, setHealthData] = useState([]);
@@ -26,9 +26,9 @@ const PipelineHealthStatus = () => {
       <Typography variant="h6" gutterBottom>
         Pipeline Health
       </Typography>
-      <Grid container spacing={2}>
+      <Grid2 container spacing={2}>
         {healthData.map((item) => (
-          <Grid item xs={12} sm={6} md={3} key={item._id}>
+          <Grid2 item xs={12} sm={6} md={3} key={item._id}>
             <Paper sx={{ p: 2, textAlign: 'center' }}>
               <Typography variant="subtitle1">{item.component}</Typography>
               <Typography variant="body2">
@@ -38,9 +38,9 @@ const PipelineHealthStatus = () => {
                 Uptime: {item.uptime} sec
               </Typography>
             </Paper>
-          </Grid>
+          </Grid2>
         ))}
-      </Grid>
+      </Grid2>
     </>
   );
 };
