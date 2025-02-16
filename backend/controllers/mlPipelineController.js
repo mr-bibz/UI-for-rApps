@@ -91,14 +91,20 @@ exports.runPipeline = async (req, res) => {
   if (!pipelineId) {
     return res.status(400).json({ error: 'pipelineId is required' });
   }
+
   try {
     if (processGroupId) {
-      await axios.put(`${NIFI_BASE_URL}/flow/process-groups/${processGroupId}`, {
-        id: processGroupId,
-        state: 'RUNNING'
-      });
-      console.log(`[NiFi] Flow started => PG=${processGroupId}`);
+      if (processGroupId.startsWith('dummy-')) {
+        console.log(`[NiFi] Detected dummy process group ID: ${processGroupId}. Skipping API call.`);
+      } else {
+        await axios.put(`${NIFI_BASE_URL}/flow/process-groups/${processGroupId}`, {
+          id: processGroupId,
+          state: 'RUNNING'
+        });
+        console.log(`[NiFi] Flow started => PG=${processGroupId}`);
+      }
     }
+
     if (kafkaTopic) {
       const producer = await getKafkaProducer();
       await producer.send({
@@ -107,6 +113,7 @@ exports.runPipeline = async (req, res) => {
       });
       console.log(`[Kafka] Produced message to ${kafkaTopic}`);
     }
+
     pipelineRuns[pipelineId] = {
       processGroupId,
       kafkaTopic,
@@ -114,6 +121,7 @@ exports.runPipeline = async (req, res) => {
       version,
       status: 'NiFi flow started'
     };
+
     res.json({
       success: true,
       message: 'Pipeline run initiated. NiFi will callback once ingestion completes.',
