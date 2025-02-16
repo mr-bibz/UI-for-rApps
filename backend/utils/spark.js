@@ -18,8 +18,8 @@ exports.submitSparkJob = async (sparkJobName) => {
   try {
     const { SPARK_MASTER } = require('../config');
     // Construct the spark-submit command; adjust the script path as needed
-    const cmd = 'spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/${sparkJobName}.py';
-    console.log('[Spark] Job submitted successfully:', result.stdout);
+    const cmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/${sparkJobName}.py`;
+    console.log(`[Spark] Job submitted successfully:`, result.stdout);
     return result;
   } catch (error) {
     console.error('Error submitting Spark job:', error.message);

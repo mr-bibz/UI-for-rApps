@@ -17,7 +17,7 @@ exports.createKafkaTopics = async (topicNames) => {
         replicationFactor: 1
       }))
     });
-    console.log('[Kafka] Topics created: ${topicNames.join(', ')}');
+    console.log(`[Kafka] Topics created: ${topicNames.join(', ')}`);
   } catch (error) {
     console.error('Error creating Kafka topics:', error.message);
     throw error;
