@@ -41,11 +41,13 @@ exports.createPipelineDefinition = async (req, res) => {
     console.log('[createPipelineDefinition] req.file:', req.file);
 
     const { name, template } = req.body;
+    const templateUsed = template || 'default';
+
     if (!name ) {
       return res.status(400).json({ error: 'Pipeline name is required.' });
     }
 
-    const templateUsed = template || 'default';
+    
 
     // If a dataset file was uploaded, capture its file path (or process its content as needed)
     let datasetFileInfo = null;
@@ -54,26 +56,21 @@ exports.createPipelineDefinition = async (req, res) => {
       console.log('Dataset file recieved: ${datasetFileInfo}');
     }
 
-    // 1. Retrieve available NiFi templates via NiFi REST API
-    const { fetchAvailableTemplates, createMinimalKafkaNiFiTemplate, cloneNifiTemplate } = require('../utils/nifi');
     const availableTemplates = await fetchAvailableTemplates();
-    // 2. Find a matching template based on the "template" field (e.g., "simulated" or "real")
     let matchingTemplate = availableTemplates.find(tpl =>
-      tpl.template.name.toLowerCase().includes(template.toLowerCase())
+      tpl.template.name.toLowerCase().includes(templateUsed.toLowerCase())
     );
     let templateId;
     if (matchingTemplate) {
       templateId = matchingTemplate.id;
-      console.log('[Controller] Found existing NiFi template for ${template}: ${templateId}');
+      console.log(`Found NiFi template for "${templateUsed}": ${templateId}`);
     } else {
-      // 3. If no matching template, create a minimal template dynamically
-      templateId = await createMinimalKafkaNiFiTemplate(template);
-      console.log('[Controller] Created minimal NiFi template for ${template}: ${templateId}');
+      templateId = await createMinimalKafkaNiFiTemplate(templateUsed);
+      console.log(`Created minimal NiFi template for "${templateUsed}": ${templateId}`);
     }
 
-    // 4. Clone the chosen NiFi template to create a new Process Group (PG) and start it
     const newPgId = await cloneNifiTemplate(templateId);
-    console.log('[Controller] New NiFi Process Group ID: ${newPgId}');
+    console.log(`New NiFi process group ID: ${newPgId}`);
 
     // 5. Define Kafka topic and Spark job based on the template and a timestamp
     const kafkaTopic = '${template}-topic-${Date.now()}';
