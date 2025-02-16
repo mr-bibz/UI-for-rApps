@@ -1,7 +1,7 @@
 // src/views/Monitoring.jsx
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody, TableContainer } from '@mui/material';
-import Grid from '@mui/material/Unstable_Grid2'; // Using the new Grid API
+import { Container, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody, TableContainer, Grid2 } from '@mui/material';
+import Grid2 from '@mui/material/Unstable_Grid2'; // Using the new Grid API
 import { fetchLogs, fetchContainerMetrics } from '../api/apiService';
 
 const Monitoring = () => {
@@ -45,9 +45,9 @@ const Monitoring = () => {
       <Typography variant="h4" gutterBottom>
         Monitoring Dashboard
       </Typography>
-      <Grid container spacing={3}>
+      <Grid2 container spacing={3}>
         {/* Logs Section */}
-        <Grid xs={12}>
+        <Grid2 xs={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               System & Error Logs
@@ -81,18 +81,18 @@ const Monitoring = () => {
               </Table>
             </TableContainer>
           </Paper>
-        </Grid>
+        </Grid2>
 
         {/* Container Metrics Section */}
-        <Grid xs={12}>
+        <Grid2 xs={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Container Metrics
             </Typography>
             {containerMetrics ? (
-              <Grid container spacing={2}>
+              <Grid2 container spacing={2}>
                 {Object.entries(containerMetrics).map(([containerName, metrics]) => (
-                  <Grid key={containerName} xs={12} sm={6} md={3}>
+                  <Grid2 key={containerName} xs={12} sm={6} md={3}>
                     <Paper sx={{ p: 2 }}>
                       <Typography variant="h6" align="center">
                         {containerName.toUpperCase()}
@@ -107,15 +107,15 @@ const Monitoring = () => {
                         Network Throughput: {metrics.networkThroughput} MB/s
                       </Typography>
                     </Paper>
-                  </Grid>
+                  </Grid2>
                 ))}
-              </Grid>
+              </Grid2>
             ) : (
               <Typography variant="body1">No container metrics available.</Typography>
             )}
           </Paper>
-        </Grid>
-      </Grid>
+        </Grid2>
+      </Grid2>
     </Container>
   );
 };

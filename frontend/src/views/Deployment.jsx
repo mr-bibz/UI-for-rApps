@@ -1,7 +1,7 @@
 // src/views/Deployment.jsx
 import React, { useState } from 'react';
 import { Container, Typography, Paper, Button, Stack, Box } from '@mui/material';
-import Grid from '@mui/material/Unstable_Grid2'; // New Grid API
+import Grid2 from '@mui/material/Unstable_Grid2'; // New Grid API
 import {
   startNifi,
   stopNifi,
@@ -102,9 +102,9 @@ return (
       <Typography variant="h6" gutterBottom>
         Control Panel
       </Typography>
-      <Grid container spacing={3}>
+      <Grid2 container spacing={3}>
         {/* NiFi Controls */}
-        <Grid xs={12} sm={6} md={3}>
+        <Grid2 xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle1" align="center">
               NiFi
@@ -118,9 +118,9 @@ return (
               </Button>
             </Stack>
           </Paper>
-        </Grid>
+        </Grid2>
         {/* Kafka Controls */}
-        <Grid xs={12} sm={6} md={3}>
+        <Grid2 xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle1" align="center">
               Kafka
@@ -134,9 +134,9 @@ return (
               </Button>
             </Stack>
           </Paper>
-        </Grid>
+        </Grid2>
         {/* Spark Controls */}
-        <Grid xs={12} sm={6} md={3}>
+        <Grid2 xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle1" align="center">
               Spark
@@ -150,9 +150,9 @@ return (
               </Button>
             </Stack>
           </Paper>
-        </Grid>
+        </Grid2>
         {/* rApps Controls */}
-        <Grid xs={12} sm={6} md={3}>
+        <Grid2 xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle1" align="center">
               rApps
@@ -166,8 +166,8 @@ return (
               </Button>
             </Stack>
           </Paper>
-        </Grid>
-      </Grid>
+        </Grid2>
+      </Grid2>
     </Paper>
 
     {/* Deployment Logs Section */}

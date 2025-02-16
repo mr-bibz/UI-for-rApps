@@ -1,7 +1,7 @@
 // src/views/Dashboard.jsx
 import React, { useEffect, useState } from 'react';
 import { Container, Typography, Paper, Button, Stack } from '@mui/material';
-import Grid from '@mui/material/Unstable_Grid2'; // Updated import for new Grid API
+import Grid2 from '@mui/material/Unstable_Grid2'; // Updated import for new Grid API
 import { useNavigate } from 'react-router-dom';
 import { fetchMlPipelines, deleteMlPipeline } from '../api/apiService';
 
@@ -53,10 +53,10 @@ const Dashboard = () => {
       </Button>
 
       {/* Display a grid of pipeline cards using Unstable_Grid2 */}
-      <Grid container spacing={3}>
+      <Grid2 container spacing={3}>
         {pipelines.length > 0 ? (
           pipelines.map((pipeline) => (
-            <Grid xs={12} sm={6} md={4} key={pipeline._id}>
+            <Grid2 xs={12} sm={6} md={4} key={pipeline._id}>
               <Paper sx={{ p: 2 }}>
                 <Typography variant="h6">{pipeline.name}</Typography>
                 <Typography variant="body2">
@@ -93,12 +93,12 @@ const Dashboard = () => {
                   </Button>
                 </Stack>
               </Paper>
-            </Grid>
+            </Grid2>
           ))
         ) : (
           <Typography variant="body1">No pipelines available.</Typography>
         )}
-      </Grid>
+      </Grid2>
     </Container>
   );
 };
