@@ -8,6 +8,7 @@ const {
 } = require('../controllers/mlPipelineController');
 
 const router = express.Router();
+const PipelineDefinition = require('../models/PipelineDefinition');
 
 // rApp calls => starts NiFi flow => store pipeline run in memory
 router.post('/run', runPipeline);

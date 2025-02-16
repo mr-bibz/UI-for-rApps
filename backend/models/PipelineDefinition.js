@@ -10,7 +10,8 @@ const pipelineDefinitionSchema = new mongoose.Schema({
   rApps: { type: [String], required: true },
   status: { type: String, default: 'inactive' },
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+  lastRun: {type: Date, default:null}
 });
 
 module.exports = mongoose.model('PipelineDefinition', pipelineDefinitionSchema);
