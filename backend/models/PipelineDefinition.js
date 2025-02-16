@@ -7,12 +7,10 @@ const pipelineDefinitionSchema = new mongoose.Schema({
   nifiFlow: { type: String, required: true },
   kafkaTopic: { type: String, required: true },
   sparkJob: { type: String, required: true },
-  rApps: { type: [String], required: true },
   status: { type: String, default: 'inactive' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   lastRun: {type: Date, default:null},
-  dataset: {type: String, default:null}
 });
 
 module.exports = mongoose.model('PipelineDefinition', pipelineDefinitionSchema);

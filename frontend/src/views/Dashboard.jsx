@@ -39,6 +39,11 @@ const Dashboard = () => {
     }
   };
 
+  // Navigate to the deployment page for a specific pipeline
+  const handleView = (pipelineId) => {
+    navigate(`/deployment/${pipelineId}`);
+  };
+
   useEffect(() => {
     loadPipelines();
   }, []);
@@ -65,6 +70,7 @@ const Dashboard = () => {
           <TableHead>
             <TableRow>
               <TableCell>Name</TableCell>
+              <TableCell>Template</TableCell>
               <TableCell>Created At</TableCell>
               <TableCell>Last Run</TableCell>
               <TableCell>Status</TableCell>
@@ -76,6 +82,7 @@ const Dashboard = () => {
               pipelines.map((pipeline) => (
                 <TableRow key={pipeline._id}>
                   <TableCell>{pipeline.name}</TableCell>
+                  <TableCell>{pipeline.template}</TableCell>
                   <TableCell>{new Date(pipeline.createdAt).toLocaleString()}</TableCell>
                   <TableCell>
                     {pipeline.lastRun ? new Date(pipeline.lastRun).toLocaleString() : 'N/A'}
@@ -84,9 +91,18 @@ const Dashboard = () => {
                   <TableCell align="center">
                     <Button
                       variant="outlined"
+                      color="primary"
+                      size="small"
+                      onClick={() => handleView(pipeline._id)}
+                    >
+                      Deploy
+                    </Button>
+                    <Button
+                      variant="outlined"
                       color="error"
                       size="small"
                       onClick={() => handleDelete(pipeline._id)}
+                      sx={{ ml: 1 }}
                     >
                       Delete
                     </Button>
@@ -95,7 +111,7 @@ const Dashboard = () => {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5}>No pipelines available.</TableCell>
+                <TableCell colSpan={6}>No pipelines available.</TableCell>
               </TableRow>
             )}
           </TableBody>
