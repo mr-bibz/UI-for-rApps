@@ -6,6 +6,6 @@ scrape_configs:
     static_configs:
       - targets: ['backend:3000']
 
-  - job_name: 'custom_exporter'
+  - job_name: 'cadvisor'
     static_configs:
-      - targets: ['custom-exporter:9100']
+      - targets: ['host.docker.internal:8085']

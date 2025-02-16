@@ -127,17 +127,19 @@ services:
     ports:
       - "9090:9090"
 
- ########################################
-  # Telegraf
+########################################
+  # cADVISOR (Official Image)
   ########################################
-  telegraf:
-    image: telegraf:latest
-    container_name: telegraf
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
     ports:
-      - "9273:9273"
+      - "8085:8080"  # Host port 8085, container port 8080
 
 volumes:
   mongo_data:
