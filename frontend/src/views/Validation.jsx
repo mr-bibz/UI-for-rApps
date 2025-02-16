@@ -19,9 +19,9 @@ const Validation = () => {
           <NifiIngestionChart />
         </Grid2>
         {/* Spark Training Chart */}
-        <Grid xs={12} md={6}>
+        <Grid2 xs={12} md={6}>
           <SparkTrainingChart />
-        </Grid>
+        </Grid2>
         {/* Pipeline Health Status */}
         <Grid2 xs={12} md={6}>
           <PipelineHealthStatus />
