@@ -4,7 +4,7 @@ const { exec } = require('child_process');
 const { NIFI_BASE_URL, SPARK_MASTER } = require('../config');
 const MLModel = require('../models/MLModel');
 const PipelineDefinition = require('../models/PipelineDefinition');
-const { getKafkaProducer } = require('../utils/kafkaClient');
+const { getKafkaProducer } = require('../utils/kafka');
 
 // Utility to run spark-submit commands
 function runCommand(cmd) {

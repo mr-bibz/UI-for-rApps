@@ -1,5 +1,5 @@
 // controllers/kafkaController.js
-const { getKafkaProducer } = require('../utils/kafkaClient');
+const { getKafkaProducer } = require('../utils/kafka');
 
 /**
  * Produce a message to Kafka
