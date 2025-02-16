@@ -12,11 +12,11 @@ exports.getAggregatedMetrics = async (req, res) => {
     const errorLogsQuery = 'rate(error_logs_total[1m])';
 
     const [nifiRes, kafkaRes, cpuRes, memRes, errorRes] = await Promise.all([
-      axios.get('${PROMETHEUS_URL}/api/v1/query', { params: {query: nifiIngestionQuery}}),
-      axios.get('${PROMETHEUS_URL}/api/v1/query', { params: {query: kafkaThroughputQuery}}),
-      axios.get('${PROMETHEUS_URL}/api/v1/query', { params: {query: nifiCpuQuery}}),
-      axios.get('${PROMETHEUS_URL}/api/v1/query', { params: {query: nifiMemQuery}}),
-      axios.get('${PROMETHEUS_URL}/api/v1/query', { params: {query: errorLogsQuery}})
+      axios.get(`${PROMETHEUS_URL}/api/v1/query`, { params: {query: nifiIngestionQuery}}),
+      axios.get(`${PROMETHEUS_URL}/api/v1/query`, { params: {query: kafkaThroughputQuery}}),
+      axios.get(`${PROMETHEUS_URL}/api/v1/query`, { params: {query: nifiCpuQuery}}),
+      axios.get(`${PROMETHEUS_URL}/api/v1/query`, { params: {query: nifiMemQuery}}),
+      axios.get(`${PROMETHEUS_URL}/api/v1/query`, { params: {query: errorLogsQuery}})
     ]);
 
     const aggregatedMetrics = {
