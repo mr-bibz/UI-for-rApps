@@ -6,7 +6,7 @@ const MLModel = require('../models/MLModel');
 const PipelineDefinition = require('../models/PipelineDefinition');
 const { getKafkaProducer } = require('../utils/kafka');
 
-// Import NiFi utility functions (ensure these exist in backend/utils/nifi.js)
+// Import NiFi utility functions (dummy implementations for testing)
 const { 
   fetchAvailableTemplates, 
   createMinimalKafkaNiFiTemplate, 
@@ -29,37 +29,18 @@ const pipelineRuns = {}; // e.g., pipelineRuns[pipelineId] = { processGroupId, k
 exports.createPipelineDefinition = async (req, res) => {
   try {
     console.log('[createPipelineDefinition] req.body:', req.body);
-    // We ignore req.file because we're not using file upload in this manual configuration.
-    
+    // In manual creation, we expect only JSON with fields "name" and "template"
     const { name, template } = req.body;
-    // Use 'default' if template is missing
     const templateUsed = template || 'default';
 
     if (!name) {
       return res.status(400).json({ error: 'Pipeline name is required.' });
     }
 
-    // Define default configurations for each template type
-    const templateConfigs = {
-      default: {
-        nifiFlow: 'nifi-flow-default', // These are dummy values. Replace with real API calls as needed.
-        kafkaTopic: `default-topic-${Date.now()}`,
-        sparkJob: `default-spark-job`
-      },
-      'qos-optimization': {
-        nifiFlow: 'nifi-flow-qos',
-        kafkaTopic: `qos-topic-${Date.now()}`,
-        sparkJob: `qos-spark-job`
-      },
-      'anomaly-detection': {
-        nifiFlow: 'nifi-flow-anomaly',
-        kafkaTopic: `anomaly-topic-${Date.now()}`,
-        sparkJob: `anomaly-spark-job`
-      }
-    };
-    const config = templateConfigs[templateUsed] || templateConfigs['default'];
+    // Log that we're using manual creation (no file upload)
+    console.log(`Creating pipeline "${name}" with template "${templateUsed}"`);
 
-    // Attempt to fetch available NiFi templates from NiFi (dummy implementation may return an empty array)
+    // Attempt to fetch available NiFi templates (dummy returns empty array)
     const availableTemplates = await fetchAvailableTemplates();
     let matchingTemplate = availableTemplates.find(tpl =>
       tpl.template.name.toLowerCase().includes(templateUsed.toLowerCase())
@@ -73,28 +54,28 @@ exports.createPipelineDefinition = async (req, res) => {
       templateId = await createMinimalKafkaNiFiTemplate(templateUsed);
       console.log(`Created minimal NiFi template for "${templateUsed}": ${templateId}`);
     }
-   
-    // Clone the selected (or minimal) NiFi template to create a new process group.
-    // For testing purposes, you may temporarily use a dummy clone:
-    // const newPgId = dummy-pg-id-${templateId};
 
+    // Clone the selected (or minimal) NiFi template to create a new process group.
+    // Extra logging: print out NIFI_BASE_URL to confirm it's valid.
+    console.log(`Using NIFI_BASE_URL: ${NIFI_BASE_URL}`);
     const newPgId = await cloneNifiTemplate(templateId);
     console.log(`New NiFi process group ID: ${newPgId}`);
-    // Construct the pipeline definition with automatically generated values.
+
+    // Automatically generate Kafka topic and Spark job values based on the template.
     const pipelineData = {
       name,
       template: templateUsed,
       nifiFlow: newPgId,
-      kafkaTopic: config.kafkaTopic,
-      sparkJob: config.sparkJob,
+      kafkaTopic: `${templateUsed}-topic-${Date.now()}`,
+      sparkJob: `${templateUsed}-spark-job`,
       status: 'inactive',
       createdAt: new Date(),
       updatedAt: new Date(),
       lastRun: null
     };
 
-    const newPipeline = new PipelineDefinition(pipelineData);
-    const savedPipeline = await newPipeline.save();
+    let newPipeline = new PipelineDefinition(pipelineData);
+    let savedPipeline = await newPipeline.save();
 
     console.log('[createPipelineDefinition] Pipeline created:', savedPipeline);
     res.status(201).json(savedPipeline);
@@ -106,16 +87,17 @@ exports.createPipelineDefinition = async (req, res) => {
 
 exports.runPipeline = async (req, res) => {
   const { pipelineId, processGroupId, kafkaTopic, modelName, version } = req.body;
+  console.log(`runPipeline called with NIFI_BASE_URL: ${NIFI_BASE_URL}`);
   if (!pipelineId) {
     return res.status(400).json({ error: 'pipelineId is required' });
   }
   try {
     if (processGroupId) {
-      await axios.put(`${NIFI_BASE_URL}/flow/process-groups/${processGroupId}` , {
+      await axios.put(`${NIFI_BASE_URL}/flow/process-groups/${processGroupId}`, {
         id: processGroupId,
         state: 'RUNNING'
       });
-      console.log(`[NiFi] Flow Started => PG=${processGroupId}`);
+      console.log(`[NiFi] Flow started => PG=${processGroupId}`);
     }
     if (kafkaTopic) {
       const producer = await getKafkaProducer();
@@ -155,7 +137,8 @@ exports.nifiCallback = async (req, res) => {
   try {
     run.status = 'NiFi ingestion complete';
     console.log(`[NiFi Callback] pipelineId=${pipelineId} => ingestion done`);
-    // Trigger Spark job (dummy command for now)
+
+    // Trigger Spark job (dummy command)
     const { modelName, version } = run;
     const sparkCmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/train_model.py --modelName ${modelName} --version ${version}`;
     const sparkResult = await runCommand(sparkCmd);
