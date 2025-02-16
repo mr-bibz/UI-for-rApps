@@ -3,7 +3,7 @@ import React from 'react';
 import { Container, Typography, Paper} from '@mui/material';
 import InterpretabilityPanel from '../components/InterpretabilityPanel';
 import { useParams } from 'react-router-dom';
-import Grid2 from '@mui/material/Unstable_Grid2';
+import Grid2 from '@mui/material/Grid2';
 
 const Validation = () => {
   const { pipelineId } = useParams(); // This automatically fetches the pipelineId from the URL
