@@ -1,5 +1,6 @@
 // api.js
 const express = require('express');
+const cors = require('cors');
 const mongoose = require('mongoose');
 const { MONGODB_URL, PORT } = require('./config');
 
@@ -13,6 +14,7 @@ const aggregatedMetricsRoutes = require('./routes/aggregatedMetricsRoutes');
 const interpretabilityRoutes = require('./routes/interpretabilityRoutes');
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 // Connect to MongoDB
