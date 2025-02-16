@@ -41,9 +41,11 @@ exports.createPipelineDefinition = async (req, res) => {
     console.log('[createPipelineDefinition] req.file:', req.file);
 
     const { name, template } = req.body;
-    if (!name || !template) {
-      return res.status(400).json({ error: 'Pipeline name and template (dataset type) are required.' });
+    if (!name ) {
+      return res.status(400).json({ error: 'Pipeline name is required.' });
     }
+
+    const templateUsed = template || 'default';
 
     // If a dataset file was uploaded, capture its file path (or process its content as needed)
     let datasetFileInfo = null;
