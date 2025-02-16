@@ -1,34 +1,23 @@
 // src/views/Validation.jsx
 import React from 'react';
-import { Container, Typography } from '@mui/material';
-import Grid2 from '@mui/material/Grid2';
-import NifiIngestionChart from '../components/NifiIngestionChart';
-import SparkTrainingChart from '../components/SparkTrainingChart';
-import PipelineHealthStatus from '../components/PipelineHealthStatus';
-import ErrorLogsTable from '../components/ErrorLogsTable';
+import { Container, Typography, Paper} from '@mui/material';
+import InterpretabilityPanel from '../components/InterpretabilityPanel';
+import { useParams } from 'react-router-dom';
+import Grid2 from '@mui/material/Unstable_Grid2';
 
 const Validation = () => {
+  const { pipelineId } = useParams(); // This automatically fetches the pipelineId from the URL
+  
   return (
     <Container sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
-        Validation & ML Performance
+        Validation & AI Interpretability
       </Typography>
       <Grid2 container spacing={3}>
-        {/* NiFi Ingestion Chart */}
-        <Grid2 xs={12} md={6}>
-          <NifiIngestionChart />
-        </Grid2>
-        {/* Spark Training Chart */}
-        <Grid2 xs={12} md={6}>
-          <SparkTrainingChart />
-        </Grid2>
-        {/* Pipeline Health Status */}
-        <Grid2 xs={12} md={6}>
-          <PipelineHealthStatus />
-        </Grid2>
-        {/* Recent Error Logs */}
-        <Grid2 xs={12} md={6}>
-          <ErrorLogsTable />
+        <Grid2 item xs={12}>
+          <Paper sx={{ p: 2 }}>
+            <InterpretabilityPanel pipelineId={pipelineId} />
+          </Paper>
         </Grid2>
       </Grid2>
     </Container>

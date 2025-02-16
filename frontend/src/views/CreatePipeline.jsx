@@ -1,57 +1,33 @@
 // src/views/CreatePipeline.jsx
 import React, { useState } from 'react';
-import {
-  Container,
-  Typography,
-  Box,
-  TextField,
-  Button,
-  MenuItem,
-  Stack,
-} from '@mui/material';
-import { createMlPipeline } from '../api/apiService';
+import { Container, Typography, Box, TextField, Button, Stack } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-
-const pipelineTemplates = [
-  {
-    value: 'default',
-    label: 'Default Pipeline',
-  },
-  {
-    value: 'qos-optimization',
-    label: 'QoS Optimization',
-  },
-  {
-    value: 'anomaly-detection',
-    label: 'Anomaly Detection',
-  },
-  // Add more templates as needed
-];
+import { createMlPipeline } from '../api/apiService';
 
 const CreatePipeline = () => {
   const navigate = useNavigate();
-
-  // Simplified form state: only name and template
   const [pipelineName, setPipelineName] = useState('');
-  const [template, setTemplate] = useState('default');
+  const [datasetFile, setDatasetFile] = useState(null);
+
+  const handleFileChange = (e) => {
+    setDatasetFile(e.target.files[0]);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Prepare the new pipeline configuration using default settings for the selected template.
-    const newPipeline = {
-      name: pipelineName,
-      template, // the selected template; the backend will use this to assign default configurations
-      // Optionally, you can include additional fields if needed, but defaults will be applied otherwise.
-    };
-
     try {
-      await createMlPipeline(newPipeline);
-      // After creation, navigate back to the dashboard
+      // Prepare form data with pipeline name and dataset file
+      const formData = new FormData();
+      formData.append('name', pipelineName);
+      if (datasetFile) {
+        formData.append('dataset', datasetFile);
+      }
+      // Call the backend API to create the pipeline
+      await createMlPipeline(formData);
+      // Navigate back to Dashboard after creation
       navigate('/');
     } catch (error) {
       console.error('Error creating pipeline:', error);
-      // Optionally, display an error message to the user
     }
   };
 
@@ -73,22 +49,15 @@ const CreatePipeline = () => {
           onChange={(e) => setPipelineName(e.target.value)}
           fullWidth
         />
-
-        <TextField
-          select
-          label="Pipeline Template"
-          value={template}
-          onChange={(e) => setTemplate(e.target.value)}
-          helperText="Select a default configuration template"
-          fullWidth
-        >
-          {pipelineTemplates.map((option) => (
-            <MenuItem key={option.value} value={option.value}>
-              {option.label}
-            </MenuItem>
-          ))}
-        </TextField>
-
+        <Button variant="contained" component="label">
+          Import RAN Dataset
+          <input type="file" hidden onChange={handleFileChange} />
+        </Button>
+        {datasetFile && (
+          <Typography variant="body2">
+            Selected file: {datasetFile.name}
+          </Typography>
+        )}
         <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
           <Button type="submit" variant="contained" color="primary">
             Create Pipeline

@@ -1,43 +1,46 @@
 // src/views/Monitoring.jsx
-import React, { useEffect, useState } from 'react';
-import { Container, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody, TableContainer } from '@mui/material';
-import Grid2 from '@mui/material/Grid2'; // Using the new Grid API
-import { fetchLogs, fetchContainerMetrics } from '../api/apiService';
+import React, { useState, useEffect } from 'react';
+import {
+  Container,
+  Typography,
+  Paper,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  TableContainer,
+  Box
+} from '@mui/material';
+import Grid2 from '@mui/material/Unstable_Grid2';
+import { fetchAggregatedMetrics } from '../api/apiService';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend
+} from 'recharts';
 
 const Monitoring = () => {
-  const [logs, setLogs] = useState([]);
-  const [containerMetrics, setContainerMetrics] = useState(null);
+  const [aggregatedData, setAggregatedData] = useState(null);
 
-  // Function to fetch logs from the backend
-  const loadLogs = async () => {
+  // Load aggregated metrics from our backend's aggregated endpoint
+  const loadAggregatedMetrics = async () => {
     try {
-      const response = await fetchLogs();
-      setLogs(response.data);
+      const response = await fetchAggregatedMetrics();
+      setAggregatedData(response.data);
     } catch (error) {
-      console.error('Error fetching logs:', error);
+      console.error('Error fetching aggregated metrics:', error);
     }
   };
 
-  // Function to fetch container metrics from the backend
-  const loadContainerMetrics = async () => {
-    try {
-      const response = await fetchContainerMetrics();
-      setContainerMetrics(response.data);
-    } catch (error) {
-      console.error('Error fetching container metrics:', error);
-    }
-  };
-
-  // Set up polling for logs and metrics
   useEffect(() => {
-    loadLogs();
-    loadContainerMetrics();
-    const logsInterval = setInterval(loadLogs, 10000);      // Refresh logs every 10 seconds
-    const metricsInterval = setInterval(loadContainerMetrics, 15000); // Refresh metrics every 15 seconds
-    return () => {
-      clearInterval(logsInterval);
-      clearInterval(metricsInterval);
-    };
+    loadAggregatedMetrics();
+    const intervalId = setInterval(loadAggregatedMetrics, 15000); // Poll every 15 seconds
+    return () => clearInterval(intervalId);
   }, []);
 
   return (
@@ -46,72 +49,94 @@ const Monitoring = () => {
         Monitoring Dashboard
       </Typography>
       <Grid2 container spacing={3}>
-        {/* Logs Section */}
-        <Grid2 xs={12}>
+        {/* NiFi Ingestion Chart */}
+        <Grid2 item xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
-              System & Error Logs
+              NiFi Ingestion Rate
             </Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Timestamp</TableCell>
-                    <TableCell>Component</TableCell>
-                    <TableCell>Severity</TableCell>
-                    <TableCell>Message</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {logs.length > 0 ? (
-                    logs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell>
-                        <TableCell>{log.component}</TableCell>
-                        <TableCell>{log.severity}</TableCell>
-                        <TableCell>{log.message}</TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={4}>No logs available.</TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            {aggregatedData &&
+            aggregatedData.nifiIngestion &&
+            aggregatedData.nifiIngestion.length > 0 ? (
+              <LineChart width={500} height={300} data={aggregatedData.nifiIngestion}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="timestamp"
+                  tickFormatter={(tick) => new Date(tick).toLocaleTimeString()}
+                />
+                <YAxis />
+                <Tooltip labelFormatter={(label) => new Date(label).toLocaleTimeString()} />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="ingestionRate"
+                  stroke="#8884d8"
+                  activeDot={{ r: 8 }}
+                />
+              </LineChart>
+            ) : (
+              <Typography>No ingestion data available.</Typography>
+            )}
           </Paper>
         </Grid2>
-
-        {/* Container Metrics Section */}
-        <Grid2 xs={12}>
+        {/* Container Metrics */}
+        <Grid item xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Container Metrics
             </Typography>
-            {containerMetrics ? (
-              <Grid2 container spacing={2}>
-                {Object.entries(containerMetrics).map(([containerName, metrics]) => (
-                  <Grid2 key={containerName} xs={12} sm={6} md={3}>
-                    <Paper sx={{ p: 2 }}>
-                      <Typography variant="h6" align="center">
-                        {containerName.toUpperCase()}
-                      </Typography>
-                      <Typography variant="body1">
-                        CPU Usage: {metrics.cpuUsage}%
-                      </Typography>
-                      <Typography variant="body1">
-                        Memory Usage: {metrics.memoryUsage} MB
-                      </Typography>
-                      <Typography variant="body1">
-                        Network Throughput: {metrics.networkThroughput} MB/s
-                      </Typography>
-                    </Paper>
-                  </Grid2>
-                ))}
-              </Grid2>
+            {aggregatedData && aggregatedData.containerMetrics ? (
+              Object.entries(aggregatedData.containerMetrics).map(([container, metrics]) => (
+                <Box key={container} sx={{ mb: 1 }}>
+                  <Typography variant="subtitle1">
+                    {container.toUpperCase()}
+                  </Typography>
+                  <Typography variant="body2">
+                    CPU: {metrics.cpuUsage}% | Memory: {metrics.memoryUsage} MB | Throughput: {metrics.networkThroughput} MB/s
+                  </Typography>
+                </Box>
+              ))
             ) : (
-              <Typography variant="body1">No container metrics available.</Typography>
+              <Typography>No container metrics available.</Typography>
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Error Logs Table */}
+        <Grid2 item xs={12}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Error Logs
+            </Typography>
+            {aggregatedData &&
+            aggregatedData.errorLogs &&
+            aggregatedData.errorLogs.length > 0 ? (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Timestamp</TableCell>
+                      <TableCell>Component</TableCell>
+                      <TableCell>Severity</TableCell>
+                      <TableCell>Message</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {aggregatedData.errorLogs.map((log) => (
+                      <TableRow key={log._id}>
+                        <TableCell>
+                          {new Date(log.timestamp).toLocaleString()}
+                        </TableCell>
+                        <TableCell>{log.component}</TableCell>
+                        <TableCell>{log.severity}</TableCell>
+                        <TableCell>{log.message}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Typography>No error logs available.</Typography>
             )}
           </Paper>
         </Grid2>

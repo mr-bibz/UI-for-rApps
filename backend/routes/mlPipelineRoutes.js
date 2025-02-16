@@ -1,5 +1,10 @@
 // routes/mlPipelineRoutes.js
 const express = require('express');
+const multer = require('multer');
+
+// Configure multer for file uploads (adjust destination/path as needed)
+const upload = multer({ dest: 'uploads/' });
+
 const {
   runPipeline,
   nifiCallback,
@@ -8,21 +13,21 @@ const {
 } = require('../controllers/mlPipelineController');
 
 const router = express.Router();
-const PipelineDefinition = require('../models/PipelineDefinition');
 
-// rApp calls => starts NiFi flow => store pipeline run in memory
+// Endpoint to start a pipeline run (if needed)
 router.post('/run', runPipeline);
 
-// NiFi callback => triggers Spark => store model
+// Endpoint for NiFi callback (triggers Spark job, etc.)
 router.post('/nifi/callback', nifiCallback);
 
-// Optional: check pipeline run status
+// Endpoint to check the run status of a pipeline
 router.get('/status/:pipelineId', getPipelineStatus);
 
-// Create new pipeline definition (using default configuration mode)
-router.post('/create', createPipelineDefinition);
+// Create a new pipeline definition (with file upload for dataset)
+// This endpoint expects a multipart/form-data request with a 'dataset' file field
+router.post('/create', upload.single('dataset'), createPipelineDefinition);
 
-// Optional: GET all pipeline definitions (for example, for listing on the Dashboard)
+// GET all pipeline definitions (for listing in Dashboard)
 router.get('/', async (req, res) => {
   try {
     const PipelineDefinition = require('../models/PipelineDefinition');
@@ -34,7 +39,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Delete the pipeline definitions 
+// DELETE a pipeline definition by its ID
 router.delete('/:pipelineId', async (req, res) => {
   try {
     const PipelineDefinition = require('../models/PipelineDefinition');

@@ -42,7 +42,9 @@ export const fetchContainerMetrics = () => axios.get('${API_BASE_URL}/metrics/co
 /**
  * Create ML pipeline Endpoints
  */
-export const createMlPipeline = (pipelineData) => axios.post('${API_BASE_URL}/ml-pipeline/create', pipelineData);
+export const createMlPipeline = (pipelineData) => axios.post('${API_BASE_URL}/ml-pipeline/create', pipelineData , {
+    headers: {'Content-Type': 'multipart/form-data'}
+});
 
 /**
  * Fetch ML pipeline Endpoints
@@ -58,3 +60,13 @@ export const deleteMlPipeline = (pipelineId) => axios.delete('${API_BASE_URL}/ml
  * Fetch ML pipeline Logs
  */
 export const fetchLogs = () => axios.get('${API_BASE_URL}/metrics/error-logs');
+
+/**
+ * Fetch AggregatedMetrics
+ */
+export const fetchAggregatedMetrics = () => axios.get('${API_BASE_URL}/metrics/aggregated');
+
+/**
+ * Fetch IntepretabilityMetrics
+ */
+export const fetchInterpretabilityMetrics = (pipelineId) => axios.get('${API_BASE_URL}/interpretability/${pipelineId}');

@@ -8,6 +8,9 @@ const kafkaRoutes = require('./routes/kafkaRoutes');
 const sparkRoutes = require('./routes/sparkRoutes');
 const mlPipelineRoutes = require('./routes/mlPipelineRoutes');
 const metricsRoutes = require('./routes/metricsRoutes');
+const deploymentRoutes = require('./routes/deploymentRoutes');
+const aggregatedMetricsRoutes = require('./routes/aggregatedMetricsRoutes');
+const interpretabilityRoutes = require('./routes/interpretabilityRoutes');
 
 const app = express();
 app.use(express.json());
@@ -25,6 +28,9 @@ app.use('/api/kafka', kafkaRoutes);
 app.use('/api/spark', sparkRoutes);
 app.use('/api/ml-pipeline', mlPipelineRoutes);
 app.use('/api/metrics', metricsRoutes);
+app.use('/api/deployment', deploymentRoutes);
+app.use('/api/metrics/aggregated', aggregatedMetricsRoutes);
+app.use('/api/interpretability', interpretabilityRoutes);
 
 // Start server
 app.listen(PORT, () => {

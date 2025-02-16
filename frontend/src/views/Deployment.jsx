@@ -1,192 +1,123 @@
 // src/views/Deployment.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Container, Typography, Paper, Button, Stack, Box } from '@mui/material';
-import Grid2 from '@mui/material/Grid2'; // New Grid API
+import Grid2 from '@mui/material/Unstable_Grid2';
+import { useParams } from 'react-router-dom';
 import {
-  startNifi,
-  stopNifi,
-  startKafka,
-  stopKafka,
-  deploySparkJob,
-  stopSparkJob
-  // If you have endpoints for rApps, you could import them as well.
+  startNifiFlow,
+  stopNifiFlow,
+  trainSparkModel,
+  retrainSparkModel
 } from '../api/apiService';
 
 const Deployment = () => {
+  const { pipelineId } = useParams(); // Suppose we navigate here with /deployment/:pipelineId
   const [logs, setLogs] = useState([]);
 
-  // Helper function to append log messages with a timestamp
-  const addLog = (message) => {
-    const timeStampedMessage = '${new Date().toLocaleTimeString()}: ${message}';
-    setLogs((prevLogs) => [...prevLogs, timeStampedMessage]);
+  const addLog = (msg) => {
+    setLogs((prev) => [...prev, '${new Date().toLocaleTimeString()}: ${msg}']);
   };
 
-  // NiFi actions
   const handleStartNifi = async () => {
     try {
-      await startNifi();
-      addLog('NiFi started successfully.');
+      await startNifiFlow(pipelineId);
+      addLog('NiFi flow started.');
     } catch (error) {
-      addLog('Error starting NiFi: ${error.message}');
+      addLog('Error starting NiFi flow: ${error.message}');
     }
-};
+  };
 
-const handleStopNifi = async () => {
-  try {
-    await stopNifi();
-    addLog('NiFi stopped successfully.');
-  } catch (error) {
-    addLog('Error stopping NiFi: ${error.message}');
-}
-};
-
-// Kafka actions
-const handleStartKafka = async () => {
-  try {
-    await startKafka();
-    addLog('Kafka started successfully.');
-  } catch (error) {
-    addLog('Error starting Kafka: ${error.message}');
-}
-};
-
-const handleStopKafka = async () => {
-  try {
-    await stopKafka();
-    addLog('Kafka stopped successfully.');
-  } catch (error) {
-    addLog('Error stopping Kafka: ${error.message}');
-}
-};
-
-// Spark actions
-const handleDeploySpark = async () => {
+  const handleStopNifi = async () => {
     try {
-      // Create a default job configuration; adjust as needed.
-      const jobConfig = { jobType: 'training' };
-      await deploySparkJob(jobConfig);
-      addLog('Spark job deployed successfully.');
+      await stopNifiFlow(pipelineId);
+      addLog('NiFi flow stopped.');
     } catch (error) {
-      addLog('Error deploying Spark job: ${error.message}');
+      addLog('Error stopping NiFi flow: ${error.message}');
     }
-};
+  };
 
-const handleStopSpark = async () => {
-  try {
-    await stopSparkJob();
-    addLog('Spark job stopped successfully.');
-  } catch (error) {
-    addLog('Error stopping Spark job: ${error.message}');
-}
-};
+  const handleTrainModel = async () => {
+    try {
+      await trainSparkModel(pipelineId);
+      addLog('Spark model training started.');
+    } catch (error) {
+      addLog('Error training Spark model: ${error.message}');
+    }
+  };
 
-// rApps actions (placeholder implementation)
-const handleStartRapps = () => {
-  // Implement real API call if available
-  addLog('rApps started successfully.');
-};
+  const handleRetrainModel = async () => {
+    try {
+      await retrainSparkModel(pipelineId);
+      addLog('Spark model retraining started.');
+    } catch (error) {
+      addLog('Error retraining Spark model: ${error.message}');
+    }
+  };
 
-const handleStopRapps = () => {
-  // Implement real API call if available
-  addLog('rApps stopped successfully.');
-};
-
-return (
-  <Container sx={{ mt: 4, mb: 4 }}>
-    <Typography variant="h4" gutterBottom>
-      Deployment & Orchestration
-    </Typography>
-
-    {/* Control Panel */}
-    <Paper sx={{ p: 3, mb: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        Control Panel
+  return (
+    <Container sx={{ mt: 4, mb: 4 }}>
+      <Typography variant="h4" gutterBottom>
+        Deployment & Orchestration
       </Typography>
+      <Typography variant="body1" gutterBottom>
+        Pipeline ID: {pipelineId}
+      </Typography>
+
       <Grid2 container spacing={3}>
         {/* NiFi Controls */}
-        <Grid2 xs={12} sm={6} md={3}>
+        <Grid2 item xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1" align="center">
-              NiFi
+            <Typography variant="h6" gutterBottom>
+              Data Processing (NiFi)
             </Typography>
-            <Stack spacing={1} direction="column">
-              <Button variant="contained" color="primary" onClick={handleStartNifi}>
-                Start NiFi
+            <Stack direction="row" spacing={2}>
+              <Button variant="contained" onClick={handleStartNifi}>
+                Start NiFi Flow
               </Button>
               <Button variant="outlined" color="error" onClick={handleStopNifi}>
-                Stop NiFi
+                Stop NiFi Flow
               </Button>
             </Stack>
           </Paper>
         </Grid2>
-        {/* Kafka Controls */}
-        <Grid2 xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1" align="center">
-              Kafka
-            </Typography>
-            <Stack spacing={1} direction="column">
-              <Button variant="contained" color="primary" onClick={handleStartKafka}>
-                Start Kafka
-              </Button>
-              <Button variant="outlined" color="error" onClick={handleStopKafka}>
-                Stop Kafka
-              </Button>
-            </Stack>
-          </Paper>
-        </Grid2>
+
         {/* Spark Controls */}
-        <Grid2 xs={12} sm={6} md={3}>
+        <Grid2 item xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1" align="center">
-              Spark
+            <Typography variant="h6" gutterBottom>
+              ML Training (Spark)
             </Typography>
-            <Stack spacing={1} direction="column">
-              <Button variant="contained" color="primary" onClick={handleDeploySpark}>
-                Deploy Spark Job
+            <Stack direction="row" spacing={2}>
+              <Button variant="contained" onClick={handleTrainModel}>
+                Train Model
               </Button>
-              <Button variant="outlined" color="error" onClick={handleStopSpark}>
-                Stop Spark Job
+              <Button variant="outlined" onClick={handleRetrainModel}>
+                Retrain Model
               </Button>
             </Stack>
           </Paper>
         </Grid2>
-        {/* rApps Controls */}
-        <Grid2 xs={12} sm={6} md={3}>
+
+        {/* Logs */}
+        <Grid2 item xs={12}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1" align="center">
-              rApps
+            <Typography variant="h6" gutterBottom>
+              Deployment Logs
             </Typography>
-            <Stack spacing={1} direction="column">
-              <Button variant="contained" color="primary" onClick={handleStartRapps}>
-                Start rApps
-              </Button>
-              <Button variant="outlined" color="error" onClick={handleStopRapps}>
-                Stop rApps
-              </Button>
-            </Stack>
+            <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
+              {logs.length > 0 ? (
+                logs.map((log, idx) => (
+                  <Typography key={idx} variant="body2">
+                    {log}
+                  </Typography>
+                ))
+              ) : (
+                <Typography variant="body2">No deployment logs available.</Typography>
+              )}
+            </Box>
           </Paper>
         </Grid2>
       </Grid2>
-    </Paper>
-
-    {/* Deployment Logs Section */}
-    <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Deployment Logs / History
-        </Typography>
-        {logs.length > 0 ? (
-          <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
-            {logs.map((log, index) => (
-              <Typography key={index} variant="body2">
-                {log}
-              </Typography>
-            ))}
-          </Box>
-        ) : (
-          <Typography variant="body1">No deployment logs available.</Typography>
-        )}
-      </Paper>
     </Container>
   );
 };
