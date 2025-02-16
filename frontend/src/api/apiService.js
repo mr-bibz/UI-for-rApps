@@ -70,3 +70,11 @@ export const fetchAggregatedMetrics = () => axios.get('${API_BASE_URL}/metrics/a
  * Fetch IntepretabilityMetrics
  */
 export const fetchInterpretabilityMetrics = (pipelineId) => axios.get('${API_BASE_URL}/interpretability/${pipelineId}');
+
+/**
+ * Deployment Endpoints
+ */
+export const startNifiFlow = (pipelineId) => axios.post('${API_BASE_URL)/deployment/${pipelineId}/start-processing');
+export const stopNifiFlow = (pipelineId) => axios.post('${API_BASE_URL)/deployment/${pipelineId}/stop-processing');
+export const trainSparkModel = (pipelineId) => axios.post('${API_BASE_URL)/deployment/${pipelineId}/train-model');
+export const retrainSparkModel = (pipelineId) => axios.post('${API_BASE_URL}/deployment/${pipelineId}/retrain-model');
