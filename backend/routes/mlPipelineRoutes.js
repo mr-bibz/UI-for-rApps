@@ -17,4 +17,6 @@ router.post('/nifi/callback', nifiCallback);
 // Optional to check pipeline run status
 router.get('/status/:pipelineId', getPipelineStatus);
 
+router.post('/create', createPipelineDefintion);
+
 module.exports = router;

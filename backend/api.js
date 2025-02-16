@@ -7,6 +7,7 @@ const nifiRoutes = require('./routes/nifiRoutes');
 const kafkaRoutes = require('./routes/kafkaRoutes');
 const sparkRoutes = require('./routes/sparkRoutes');
 const mlPipelineRoutes = require('./routes/mlPipelineRoutes');
+const metricsRoutes = require('./routes/metricsRoutes');
 
 const app = express();
 app.use(express.json());
@@ -23,6 +24,7 @@ app.use('/api/nifi', nifiRoutes);
 app.use('/api/kafka', kafkaRoutes);
 app.use('/api/spark', sparkRoutes);
 app.use('/api/ml-pipeline', mlPipelineRoutes);
+app.use('/api/metrics', metricsRoutes);
 
 // Start server
 app.listen(PORT, () => {
