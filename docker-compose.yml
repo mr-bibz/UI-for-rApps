@@ -128,15 +128,16 @@ services:
       - "9090:9090"
 
  ########################################
-  # DOCKER STATS EXPORTER (Alternative to cAdvisor)
+  # Telegraf
   ########################################
-  docker-stats-exporter:
-    image: dcelements/docker-stats-exporter:latest
-    container_name: docker-stats-exporter
+  telegraf:
+    image: telegraf:latest
+    container_name: telegraf
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
     ports:
-      - "8085:8080"
+      - "9273:9273"
 
 volumes:
   mongo_data:
