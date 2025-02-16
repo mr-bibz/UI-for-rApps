@@ -131,7 +131,7 @@ services:
   # DOCKER STATS EXPORTER (Alternative to cAdvisor)
   ########################################
   docker-stats-exporter:
-    image: carmstrong/docker-stats-exporter:latest
+    image: dcelements/docker-stats-exporter:latest
     container_name: docker-stats-exporter
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
