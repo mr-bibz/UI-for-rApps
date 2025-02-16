@@ -127,17 +127,14 @@ services:
     ports:
       - "9090:9090"
 
+ ########################################
+  # DOCKER STATS EXPORTER (Alternative to cAdvisor)
   ########################################
-  # CADVISOR
-  ########################################
-  cadvisor:
-    image: google/cadvisor:latest
-    container_name: cadvisor
+  docker-stats-exporter:
+    image: carmstrong/docker-stats-exporter:latest
+    container_name: docker-stats-exporter
     volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "8085:8080"
 
