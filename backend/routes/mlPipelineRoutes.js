@@ -33,4 +33,16 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Delete the pipeline definitions 
+router.delete('/:pipelineId', async (req, res) => {
+  try {
+    const PipelineDefinition = require('../models/PipelineDefinition');
+    await PipelineDefinition.findByIdAndDelete(req.params.pipelineId);
+    res.json({ message: 'Pipeline deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting pipeline:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
