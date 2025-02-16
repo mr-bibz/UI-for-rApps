@@ -1,7 +1,7 @@
 // src/views/Dashboard.jsx
 import React, { useEffect, useState } from 'react';
 import { Container, Typography, Paper, Button, Stack } from '@mui/material';
-import Grid2 from '@mui/material/Unstable_Grid2'; // Updated import for new Grid API
+import Grid2 from '@mui/material/Grid2'; // Updated import for new Grid API
 import { useNavigate } from 'react-router-dom';
 import { fetchMlPipelines, deleteMlPipeline } from '../api/apiService';
 

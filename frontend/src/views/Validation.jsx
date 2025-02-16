@@ -1,7 +1,7 @@
 // src/views/Validation.jsx
 import React from 'react';
 import { Container, Typography } from '@mui/material';
-import Grid2 from '@mui/material/Unstable_Grid2';
+import Grid2 from '@mui/material/Grid2';
 import NifiIngestionChart from '../components/NifiIngestionChart';
 import SparkTrainingChart from '../components/SparkTrainingChart';
 import PipelineHealthStatus from '../components/PipelineHealthStatus';

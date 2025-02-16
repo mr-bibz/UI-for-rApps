@@ -1,7 +1,7 @@
 // src/views/Monitoring.jsx
 import React, { useEffect, useState } from 'react';
 import { Container, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody, TableContainer, Grid2 } from '@mui/material';
-import Grid2 from '@mui/material/Unstable_Grid2'; // Using the new Grid API
+import Grid2 from '@mui/material/Grid2'; // Using the new Grid API
 import { fetchLogs, fetchContainerMetrics } from '../api/apiService';
 
 const Monitoring = () => {

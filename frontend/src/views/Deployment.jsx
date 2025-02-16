@@ -1,7 +1,7 @@
 // src/views/Deployment.jsx
 import React, { useState } from 'react';
 import { Container, Typography, Paper, Button, Stack, Box } from '@mui/material';
-import Grid2 from '@mui/material/Unstable_Grid2'; // New Grid API
+import Grid2 from '@mui/material/Grid2'; // New Grid API
 import {
   startNifi,
   stopNifi,
