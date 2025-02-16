@@ -42,9 +42,7 @@ export const fetchContainerMetrics = () => axios.get(`${API_BASE_URL}/metrics/co
 /**
  * Create ML pipeline Endpoints
  */
-export const createMlPipeline = (pipelineData) => axios.post(`${API_BASE_URL}/ml-pipeline/create`, pipelineData , {
-    headers: {'Content-Type': 'multipart/form-data'}
-});
+export const createMlPipeline = (pipelineData) => axios.post(`${API_BASE_URL}/ml-pipeline/create`, pipelineData);
 
 /**
  * Fetch ML pipeline Endpoints
