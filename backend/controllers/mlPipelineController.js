@@ -37,6 +37,9 @@ const pipelineRuns = {}; // e.g., pipelineRuns[pipelineId] = { processGroupId, k
  */
 exports.createPipelineDefinition = async (req, res) => {
   try {
+    console.log('[createPipelineDefinition] req.body:', req.body);
+    console.log('[createPipelineDefinition] req.file:', req.file);
+
     const { name, template } = req.body;
     if (!name || !template) {
       return res.status(400).json({ error: 'Pipeline name and template (dataset type) are required.' });
