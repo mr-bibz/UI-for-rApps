@@ -7,10 +7,11 @@ const { NIFI_BASE_URL } = require('../config');
  */
 exports.fetchAvailableTemplates = async () => {
   try {
-    const response = await axios.get(`${NIFI_BASE_URL}/flow/templates`);
+  //  const response = await axios.get(`${NIFI_BASE_URL}/flow/templates`);
     // NiFi returns a JSON with a "templates" array
-    return response.data.templates || [];
-  } catch (error) {
+  //  return response.data.templates || [];
+   return[];
+ } catch (error) {
     console.error(`Error fetching NiFi templates: ${error.message}`);
     return [];
   }
@@ -32,7 +33,11 @@ exports.createMinimalKafkaNiFiTemplate = async (templateName) => {
  */
 exports.cloneNifiTemplate = async (templateId) => {
   try {
+    const dummyPgID= `dummy-pg-id-${templateId}`;
+    console.log(`[NiFi] Dummy clone of template ${templateId}: ${dummyPgID}`);
+    return dummyPgID;
     // Use "root" as the parent process group (adjust if necessary)
+   /*
     const rootPG = 'root';
     const instanceResp = await axios.post(`${NIFI_BASE_URL}/process-groups/${rootPG}/template-instance`,
     {
@@ -62,6 +67,7 @@ exports.cloneNifiTemplate = async (templateId) => {
   console.log(`[NiFi] Process group ${newPgId} is now RUNNING`);
 
   return newPgId;
+  */
   } catch (error) {
     console.error(`Error cloning NiFi template: ${error.message}`);
     throw error;
