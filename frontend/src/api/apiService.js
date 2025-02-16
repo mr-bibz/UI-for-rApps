@@ -44,3 +44,7 @@ export const fetchContainerMetrics = () => axios.get('${API_BASE_URL}/metrics/co
  */
 export const createMlPipeline = (pipelineData) => axios.post('${API_BASE_URL}/ml-pipeline/create', pipelineData);
 
+/**
+ * Fetch ML pipeline Endpoints
+ */
+export const fetchMlPipelines = (pipelineData) => axios.get('${API_BASE_URL}/ml-pipeline');

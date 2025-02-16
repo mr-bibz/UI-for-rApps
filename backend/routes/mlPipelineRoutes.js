@@ -3,20 +3,34 @@ const express = require('express');
 const {
   runPipeline,
   nifiCallback,
-  getPipelineStatus
+  getPipelineStatus,
+  createPipelineDefinition
 } = require('../controllers/mlPipelineController');
 
 const router = express.Router();
 
-// rApp calls => starts NiFi flow => store pipeline run
+// rApp calls => starts NiFi flow => store pipeline run in memory
 router.post('/run', runPipeline);
 
 // NiFi callback => triggers Spark => store model
 router.post('/nifi/callback', nifiCallback);
 
-// Optional to check pipeline run status
+// Optional: check pipeline run status
 router.get('/status/:pipelineId', getPipelineStatus);
 
-router.post('/create', createPipelineDefintion);
+// Create new pipeline definition (using default configuration mode)
+router.post('/create', createPipelineDefinition);
+
+// Optional: GET all pipeline definitions (for example, for listing on the Dashboard)
+router.get('/', async (req, res) => {
+  try {
+    const PipelineDefinition = require('../models/PipelineDefinition');
+    const pipelines = await PipelineDefinition.find({});
+    res.json(pipelines);
+  } catch (error) {
+    console.error('Error fetching pipeline definitions:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 module.exports = router;
