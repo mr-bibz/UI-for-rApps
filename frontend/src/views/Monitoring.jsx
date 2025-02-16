@@ -80,7 +80,7 @@ const Monitoring = () => {
           </Paper>
         </Grid2>
         {/* Container Metrics */}
-        <Grid item xs={12} md={6}>
+        <Grid2 item xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Container Metrics
@@ -100,7 +100,7 @@ const Monitoring = () => {
               <Typography>No container metrics available.</Typography>
             )}
           </Paper>
-        </Grid>
+        </Grid2>
 
         {/* Error Logs Table */}
         <Grid2 item xs={12}>
