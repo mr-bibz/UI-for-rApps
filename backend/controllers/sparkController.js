@@ -37,9 +37,10 @@ exports.trainSparkModel = async (req, res) => {
     };
 
     console.log('[trainModel] Submitting Spark job via REST...');
-    console.log('[Spark REST] Submitting job to', `${SPARK_REST_URL}/v1/submissions/create`,'with payload:', jobConfig);
-
     const response = await axios.post(`${SPARK_REST_URL}/v1/submissions/create`,jobConfig);
+    console.log('[Spark REST] Response:', response.data);
+
+   
     return res.json({ success: true, sparkResponse: response.data });
   } catch (error) {
     console.error('[Spark] trainSparkModel REST error:', error.message);

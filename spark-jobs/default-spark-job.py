@@ -1,12 +1,10 @@
-from pyspark.sql import SparkSession
+#!/usr/bin/env python3
+import sys
 
 def main():
-    spark = SparkSession.builder.appName("DefaultSparkJob").getOrCreate()
-    # A trivial DataFrame
-    data = [(1, "foo"), (2, "bar")]
-    df = spark.createDataFrame(data, ["id", "value"])
-    df.show()
-    spark.stop()
+    # Simply print the received command-line arguments
+    print("Dummy Spark job executed successfully!")
+    print("Arguments:", sys.argv[1:])
 
 if __name__ == "__main__":
     main()

@@ -113,10 +113,11 @@ exports.trainModel = async (req, res) => {
       };
   
       console.log('[trainModel] Submitting Spark job via REST...');
-      console.log('[Spark REST] Submitting job to', `${SPARK_REST_URL}/v1/submissions/create`,'with payload:', jobConfig);
+      const response = await axios.post(`${SPARK_REST_URL}/v1/submissions/create`, jobConfig);
+      console.log('[Spark REST] Response:', response.data);
 
       // POST to Spark Master’s REST endpoint
-      const response = await axios.post(`${SPARK_REST_URL}/v1/submissions/create`, jobConfig);
+      
   
       // Optionally update pipeline status
       pipeline.status = 'training';
@@ -126,7 +127,7 @@ exports.trainModel = async (req, res) => {
       res.json({
         success: true,
         message: 'Spark job submitted via REST',
-        sparkResponse
+        sparkResponse: response.data
       });
     } catch (error) {
       console.error('Error training Spark model:', error.message);
