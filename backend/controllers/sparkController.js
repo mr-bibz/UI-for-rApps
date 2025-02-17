@@ -19,7 +19,7 @@ exports.trainSparkModel = async (req, res) => {
     const SparkSubmitPath = '/opt/bitnami/spark/bin/spark-submit';
     // Where your script is located in the spark-master container.
     // Must match your Dockerfile for spark-master.
-    const sparkScript = '/opt/jobs/train_model.py';
+    const sparkScript = '/opt/jobs/default-spark-job.py';
 
     // The Spark master URL, or default if not in config
     const masterUrl = SPARK_MASTER || 'spark://spark-master:7077';
@@ -66,7 +66,7 @@ exports.retrainSparkModel = async (req, res) => {
 
     // Could be the same script or a different one
     const SparkSubmitPath = '/opt/bitnami/spark/bin/spark-submit';
-    const sparkScript = '/opt/jobs/train_model.py';
+    const sparkScript = '/opt/jobs/default-spark-job.py';
     const masterUrl = SPARK_MASTER || 'spark://spark-master:7077';
 
     // Maybe pass a --retrain arg so your script can handle logic differently
