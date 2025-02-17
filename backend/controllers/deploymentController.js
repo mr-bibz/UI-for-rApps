@@ -1,11 +1,10 @@
-// controllers/deploymentController.js
 const axios = require('axios');
-const { exec } = require('child_process');
-const { NIFI_BASE_URL, SPARK_MASTER } = require('../config');
+const { NIFI_BASE_URL } = require('../config');
 const PipelineDefinition = require('../models/PipelineDefinition');
 
 /**
- * Start NiFi flow for a given pipeline.
+ * Start NiFi flow for a given pipeline using the real NiFi REST API.
+ * This function no longer skips dummy IDs.
  * Example route: POST /deployment/:pipelineId/start-processing
  */
 exports.startProcessing = async (req, res) => {
@@ -16,24 +15,24 @@ exports.startProcessing = async (req, res) => {
       return res.status(404).json({ error: 'Pipeline not found' });
     }
 
-    // Optional: skip NiFi call if you consider certain flow IDs dummy
-    if (pipeline.nifiFlow.startsWith('nifi-')) {
-      console.log(`[NiFi] Detected dummy flow ID: ${pipeline.nifiFlow}. Skipping API call.`);
-    } else {
-      await axios.put(`${NIFI_BASE_URL}/flow/process-groups/${pipeline.nifiFlow}`, {
-        id: pipeline.nifiFlow,
-        state: 'RUNNING'
-      });
-      console.log(`[NiFi] Flow ${pipeline.nifiFlow} started.`);
-    }
+    // Construct the URL to update the state of the process group to RUNNING.
+    // For example: http://localhost:8080/nifi-api/flow/process-groups/<nifiFlow>/state
+    const url = `${NIFI_BASE_URL}/flow/process-groups/${pipeline.nifiFlow}/state`;
+    const payload = { state: 'RUNNING' };
 
+    console.log(`[NiFi] Sending request to start process group ${pipeline.nifiFlow} using URL ${url}`);
+    const response = await axios.put(url, payload);
+    console.log('[NiFi] Response:', response.data);
+
+    // Update pipeline status in MongoDB
     pipeline.status = 'processing';
     pipeline.updatedAt = new Date();
     await pipeline.save();
 
     res.json({
       success: true,
-      message: `NiFi flow ${pipeline.nifiFlow} started (or skipped if dummy).`
+      message: `NiFi flow ${pipeline.nifiFlow} started.`,
+      nifiResponse: response.data
     });
   } catch (error) {
     console.error('Error starting NiFi flow:', error.message);
@@ -42,7 +41,7 @@ exports.startProcessing = async (req, res) => {
 };
 
 /**
- * Stop NiFi flow for a given pipeline.
+ * Stop NiFi flow for a given pipeline using the real NiFi REST API.
  * Example route: POST /deployment/:pipelineId/stop-processing
  */
 exports.stopProcessing = async (req, res) => {
@@ -53,24 +52,23 @@ exports.stopProcessing = async (req, res) => {
       return res.status(404).json({ error: 'Pipeline not found' });
     }
 
-    // Optional: skip NiFi call if you consider certain flow IDs dummy
-    if (pipeline.nifiFlow.startsWith('nifi-')) {
-      console.log(`[NiFi] Detected dummy flow ID: ${pipeline.nifiFlow}. Skipping API call.`);
-    } else {
-      await axios.put(`${NIFI_BASE_URL}/flow/process-groups/${pipeline.nifiFlow}`, {
-        id: pipeline.nifiFlow,
-        state: 'STOPPED'
-      });
-      console.log(`[NiFi] Flow ${pipeline.nifiFlow} stopped.`);
-    }
+    // Construct the URL to update the state of the process group to STOPPED.
+    const url = `${NIFI_BASE_URL}/flow/process-groups/${pipeline.nifiFlow}/state`;
+    const payload = { state: 'STOPPED' };
 
+    console.log(`[NiFi] Sending request to stop process group ${pipeline.nifiFlow} using URL ${url}`);
+    const response = await axios.put(url, payload);
+    console.log('[NiFi] Response:', response.data);
+
+    // Update pipeline status in MongoDB
     pipeline.status = 'stopped';
     pipeline.updatedAt = new Date();
     await pipeline.save();
 
     res.json({
       success: true,
-      message: `NiFi flow ${pipeline.nifiFlow} stopped (or skipped if dummy).`
+      message: `NiFi flow ${pipeline.nifiFlow} stopped.`,
+      nifiResponse: response.data
     });
   } catch (error) {
     console.error('Error stopping NiFi flow:', error.message);
