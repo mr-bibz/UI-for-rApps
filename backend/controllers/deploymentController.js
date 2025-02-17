@@ -107,8 +107,8 @@ exports.trainModel = async (req, res) => {
           'spark.master': 'spark://spark-master:7077', 
           // same as SPARK_MASTER in your environment
           'spark.submit.deployMode': 'client',
-          'spark.submit.pyFiles': 'local:///opt/jobs/default-spark-job.py',
-          'spark.pyspark.python': '/usr/bin/python3'
+          //'spark.submit.pyFiles': 'local:///opt/jobs/default-spark-job.py',
+          //'spark.pyspark.python': '/usr/bin/python3'
         }
       };
   
