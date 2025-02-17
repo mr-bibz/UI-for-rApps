@@ -2,6 +2,7 @@
 const axios = require('axios');
 const { SPARK_MASTER, NIFI_BASE_URL } = require('../config');
 const PipelineDefinition = require('../models/PipelineDefinition');
+const {submitSparkJob} = require('../utils/spark'); 
 const { exec } = require('child_process');
 
 function runCommand(cmd) {
@@ -83,29 +84,6 @@ exports.startProcessing = async (req, res) => {
 };
 
 exports.trainModel = async (req, res) => {
-try {
-  const { pipelineId } = req.params;
-  const pipeline = await PipelineDefinition.findById(pipelineId);
-  if (!pipeline) {
-    return res.status(404).json({ error: 'Pipeline not found' });
-  }
-
-  // Use backticks to interpolate SPARK_MASTER and pipeline.sparkJob
-  const sparkCmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/${pipeline.sparkJob}.py`;
-  const result = await runCommand(sparkCmd);
-
-    pipeline.status = 'training';
-    pipeline.lastRun = new Date();
-    await pipeline.save();
-
-    res.json({ success: true, logs: result.stdout });
-  } catch (error) {
-    console.error('Error training Spark model:', error.message);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.retrainModel = async (req, res) => {
     try {
       const { pipelineId } = req.params;
       const pipeline = await PipelineDefinition.findById(pipelineId);
@@ -113,15 +91,78 @@ exports.retrainModel = async (req, res) => {
         return res.status(404).json({ error: 'Pipeline not found' });
       }
   
-      // In your code, pipeline.sparkjob is lowercased. Ensure consistent naming: pipeline.sparkJob or pipeline.sparkjob
-      const retrainCmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/${pipeline.sparkJob}_retrain.py`;
-      const result = await runCommand(retrainCmd);
-
+      // Example Spark REST submission payload:
+      const jobConfig = {
+        action: 'CreateSubmissionRequest',
+        appResource: 'local:///usr/src/app/jobs/default-spark-job.py', 
+        // if you have a .py file in the spark-master container
+        mainClass: 'org.apache.spark.deploy.PythonRunner', 
+        // for Python apps, the mainClass is typically this, but can vary
+        clientSparkVersion: '3.3.2',
+        appArgs: [], // Extra args if needed
+        sparkProperties: {
+          'spark.app.name': 'TrainingPipeline',
+          'spark.master': 'spark://spark-master:7077', 
+          // same as SPARK_MASTER in your environment
+          'spark.submit.deployMode': 'cluster',
+        }
+      };
+  
+      // POST to Spark REST
+      console.log('[trainModel] Submitting Spark job via REST...');
+      const sparkResponse = await submitSparkJob(jobConfig);
+  
+      // Optionally update pipeline status
+      pipeline.status = 'training';
+      pipeline.lastRun = new Date();
+      await pipeline.save();
+  
+      res.json({
+        success: true,
+        message: 'Spark job submitted via REST',
+        sparkResponse
+      });
+    } catch (error) {
+      console.error('Error training Spark model:', error.message);
+      res.status(500).json({ error: error.message });
+    }
+  };
+  
+  // Similar for retrainModel
+  exports.retrainModel = async (req, res) => {
+    try {
+      const { pipelineId } = req.params;
+      const pipeline = await PipelineDefinition.findById(pipelineId);
+      if (!pipeline) {
+        return res.status(404).json({ error: 'Pipeline not found' });
+      }
+  
+      // Example: a retrain job, referencing a different script
+      const retrainConfig = {
+        action: 'CreateSubmissionRequest',
+        appResource: 'local:///usr/src/app/jobs/default-spark-job_retrain.py',
+        mainClass: 'org.apache.spark.deploy.PythonRunner',
+        clientSparkVersion: '3.3.2',
+        appArgs: [],
+        sparkProperties: {
+          'spark.app.name': 'RetrainingPipeline',
+          'spark.master': 'spark://spark-master:7077',
+          'spark.submit.deployMode': 'cluster',
+        }
+      };
+  
+      console.log('[retrainModel] Submitting Spark job via REST...');
+      const sparkResponse = await submitSparkJob(retrainConfig);
+  
       pipeline.status = 'retraining';
       pipeline.lastRun = new Date();
       await pipeline.save();
   
-      res.json({ success: true, logs: result.stdout });
+      res.json({
+        success: true,
+        message: 'Retrain job submitted via REST',
+        sparkResponse
+      });
     } catch (error) {
       console.error('Error retraining Spark model:', error.message);
       res.status(500).json({ error: error.message });

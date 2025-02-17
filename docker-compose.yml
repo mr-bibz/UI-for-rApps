@@ -60,8 +60,10 @@ services:
     container_name: spark-master
     environment:
       - SPARK_MODE=master
+      - SPARK_MASTER_OPTS=-Dspark.master.rest.enabled=true
       - SPARK_MEMORY=2G
     ports:
+      - "6066:6066"  # REST Submission port
       - "8081:8080"  # Spark master web UI
       - "7077:7077"  # Spark master RPC port
 

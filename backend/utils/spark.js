@@ -1,28 +1,15 @@
 // utils/spark.js
-const { exec } = require('child_process');
-
-function runCommand(cmd) {
-  return new Promise((resolve, reject) => {
-    exec(cmd, (err, stdout, stderr) => {
-      if (err) return reject(err);
-      resolve({ stdout, stderr });
-    });
-  });
-}
+const axios = require('axios');
 
 /**
- * Submit a Spark job for training/inference.
- * @param {string} sparkJobName - The identifier or filename for the Spark job.
+ * Submits a Spark job via the Spark Master REST endpoint.
+ * 
+ * @param {object} jobConfig - Contains the Spark job parameters (resource, mainClass, arguments, etc.)
  */
-exports.submitSparkJob = async (sparkJobName) => {
-  try {
-    const { SPARK_MASTER } = require('../config');
-    // Construct the spark-submit command; adjust the script path as needed
-    const cmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/${sparkJobName}.py`;
-    console.log(`[Spark] Job submitted successfully:`, result.stdout);
-    return result;
-  } catch (error) {
-    console.error('Error submitting Spark job:', error.message);
-    throw error;
-  }
+exports.submitSparkJob = async (jobConfig) => {
+  const url = 'http://spark-master:6066/v1/submissions/create';
+  console.log(`[Spark REST] Submitting job to ${url} with payload:`, jobConfig);
+
+  const response = await axios.post(url, jobConfig);
+  return response.data;
 };
