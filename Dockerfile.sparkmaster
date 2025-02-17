@@ -1,0 +1,10 @@
+FROM bitnami/spark:3.3.2
+
+# Create a jobs folder
+RUN mkdir -p /opt/jobs
+
+# Copy your Python scripts from local source into the container
+# For example, if your scripts live in a local "jobs" folder
+COPY jobs/ /opt/jobs/
+
+# The container will now have your .py scripts at /opt/jobs

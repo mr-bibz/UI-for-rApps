@@ -95,7 +95,7 @@ exports.trainModel = async (req, res) => {
       // Example Spark REST submission payload:
       const jobConfig = {
         action: 'CreateSubmissionRequest',
-        appResource: 'local:///usr/src/app/jobs/default-spark-job.py', 
+        appResource: 'local:///opt/jobs/default-spark-job.py', 
         // if you have a .py file in the spark-master container
         mainClass: 'org.apache.spark.deploy.PythonRunner', 
         // for Python apps, the mainClass is typically this, but can vary
@@ -141,7 +141,7 @@ exports.trainModel = async (req, res) => {
       // Example: a retrain job, referencing a different script
       const retrainConfig = {
         action: 'CreateSubmissionRequest',
-        appResource: 'local:///usr/src/app/jobs/default-spark-job_retrain.py',
+        appResource: 'local:///opt/jobs/default-spark-job_retrain.py',
         mainClass: 'org.apache.spark.deploy.PythonRunner',
         clientSparkVersion: '3.3.2',
         appArgs: [],

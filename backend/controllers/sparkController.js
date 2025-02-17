@@ -22,7 +22,7 @@ exports.trainSparkModel = async (req, res) => {
     // Example job config for a Python script
     const jobConfig = {
       action: 'CreateSubmissionRequest',
-      appResource: 'local:///usr/src/app/jobs/train_model.py', 
+      appResource: 'local:///opt/jobs/train_model.py', 
       mainClass: 'org.apache.spark.deploy.PythonRunner', 
       clientSparkVersion: '3.3.2',
       // If your script needs arguments, add them here
