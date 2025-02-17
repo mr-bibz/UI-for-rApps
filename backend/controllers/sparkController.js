@@ -30,7 +30,7 @@ exports.trainSparkModel = async (req, res) => {
       sparkProperties: {
         'spark.app.name': 'TrainSparkModel',
         'spark.master': 'spark://spark-master:7077',
-        'spark.submit.deployMode': 'cluster'
+        'spark.submit.deployMode': 'client'
       }
     };
 

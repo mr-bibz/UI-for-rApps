@@ -105,7 +105,7 @@ exports.trainModel = async (req, res) => {
           'spark.app.name': 'TrainingPipeline',
           'spark.master': 'spark://spark-master:7077', 
           // same as SPARK_MASTER in your environment
-          'spark.submit.deployMode': 'cluster',
+          'spark.submit.deployMode': 'client',
         }
       };
   
@@ -148,7 +148,7 @@ exports.trainModel = async (req, res) => {
         sparkProperties: {
           'spark.app.name': 'RetrainingPipeline',
           'spark.master': 'spark://spark-master:7077',
-          'spark.submit.deployMode': 'cluster',
+          'spark.submit.deployMode': 'client',
         }
       };
   
