@@ -5,6 +5,6 @@ RUN mkdir -p /opt/jobs
 
 # Copy your Python scripts from local source into the container
 # For example, if your scripts live in a local "jobs" folder
-COPY jobs/ /opt/jobs/
+COPY spark-jobs/ /opt/jobs/
 
 # The container will now have your .py scripts at /opt/jobs
