@@ -4,6 +4,7 @@ const { SPARK_MASTER, NIFI_BASE_URL } = require('../config');
 const PipelineDefinition = require('../models/PipelineDefinition');
 const {submitSparkJob} = require('../utils/spark'); 
 const { exec } = require('child_process');
+const SPARK_REST_URL = 'http://spark-master:6066';
 
 /*function runCommand(cmd) {
   return new Promise((resolve, reject) => {
@@ -111,9 +112,11 @@ exports.trainModel = async (req, res) => {
         }
       };
   
-      // POST to Spark REST
       console.log('[trainModel] Submitting Spark job via REST...');
-      const sparkResponse = await submitSparkJob(jobConfig);
+      console.log('[Spark REST] Submitting job to', `${SPARK_REST_URL}/v1/submissions/create`,'with payload:', jobConfig);
+
+      // POST to Spark Master’s REST endpoint
+      const response = await axios.post(`${SPARK_REST_URL}/v1/submissions/create`, jobConfig);
   
       // Optionally update pipeline status
       pipeline.status = 'training';
@@ -156,8 +159,11 @@ exports.trainModel = async (req, res) => {
         }
       };
   
-      console.log('[retrainModel] Submitting Spark job via REST...');
-      const sparkResponse = await submitSparkJob(retrainConfig);
+      console.log('[trainModel] Submitting Spark job via REST...');
+      console.log('[Spark REST] Submitting job to', `${SPARK_REST_URL}/v1/submissions/create`,'with payload:', jobConfig);
+
+      // POST to Spark Master’s REST endpoint
+      const response = await axios.post(`${SPARK_REST_URL}/v1/submissions/create`, jobConfig);
   
       pipeline.status = 'retraining';
       pipeline.lastRun = new Date();

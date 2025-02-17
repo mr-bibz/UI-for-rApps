@@ -59,7 +59,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.sparkmaster
-    image: bitnami/spark:3.3.2
     container_name: spark-master
     environment:
       - SPARK_MODE=master
