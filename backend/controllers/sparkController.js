@@ -1,15 +1,14 @@
 // controllers/sparkController.js
-const axios = require('axios');
+
+const { exec } = require('child_process');
+const { SPARK_MASTER } = require('../config'); 
 const PipelineDefinition = require('../models/PipelineDefinition');
 
-// If you have a separate config for Spark REST URL, import it.
-// e.g. SPARK_REST_URL = 'http://spark-master:6066'
-
 /**
- * Submits a Spark job via the Spark Master REST API
- * e.g. POST http://spark-master:6066/v1/submissions/create
+ * Train Spark Model by docker exec into spark-master container
+ * and running spark-submit on your script, e.g. /opt/jobs/train_model.py
  */
-exports.trainModel = async (req, res) => {
+exports.trainSparkModel = async (req, res) => {
   try {
     const { pipelineId } = req.params;
     const pipeline = await PipelineDefinition.findById(pipelineId);
@@ -17,24 +16,27 @@ exports.trainModel = async (req, res) => {
       return res.status(404).json({ error: 'Pipeline not found' });
     }
 
-    // Where your training script is located inside spark-master:
-    // This path must match what you put in Dockerfile.sparkmaster.
+    // Where your script is located in the spark-master container.
+    // Must match your Dockerfile for spark-master.
     const sparkScript = '/opt/jobs/train_model.py';
 
-    // The Spark Master URL (e.g. "spark://spark-master:7077")
-    // If not set in config, default here:
+    // The Spark master URL, or default if not in config
     const masterUrl = SPARK_MASTER || 'spark://spark-master:7077';
 
-    // You can pass pipelineId to your script if needed:
+    // Build the docker exec command:
+    //  e.g. docker exec spark-master spark-submit --master spark://spark-master:7077 /opt/jobs/train_model.py --pipelineId ...
     const cmd = `docker exec spark-master spark-submit --master ${masterUrl} ${sparkScript} --pipelineId ${pipelineId}`;
-    console.log('[trainModel] Running command:', cmd);
+    console.log('[trainSparkModel] Running command:', cmd);
+
+    // Run the command
     exec(cmd, (error, stdout, stderr) => {
       if (error) {
-        console.error('[trainModel] error:', error.message);
+        console.error('[trainSparkModel] error:', error.message);
         return res.status(500).json({ error: error.message });
       }
-      console.log('[trainModel] stdout:', stdout);
-      console.log('[trainModel] stderr:', stderr);
+
+      console.log('[trainSparkModel] stdout:', stdout);
+      console.log('[trainSparkModel] stderr:', stderr);
 
       // Optionally update pipeline status
       pipeline.status = 'training';
@@ -44,16 +46,16 @@ exports.trainModel = async (req, res) => {
       res.json({ success: true, stdout, stderr });
     });
   } catch (error) {
-    console.error('Error training Spark model:', error.message);
+    console.error('[trainSparkModel] error:', error.message);
     res.status(500).json({ error: error.message });
   }
 };
 
+
 /**
- * Retrain a Spark model by exec'ing spark-submit in the spark-master container.
- * Example route: POST /deployment/:pipelineId/retrain-model
+ * Retrain Spark Model similarly by docker exec
  */
-exports.retrainModel = async (req, res) => {
+exports.retrainSparkModel = async (req, res) => {
   try {
     const { pipelineId } = req.params;
     const pipeline = await PipelineDefinition.findById(pipelineId);
@@ -61,20 +63,22 @@ exports.retrainModel = async (req, res) => {
       return res.status(404).json({ error: 'Pipeline not found' });
     }
 
-    // If you have a separate script for retraining or pass a --retrain flag
-    // e.g. same script but different arg
+    // Could be the same script or a different one
     const sparkScript = '/opt/jobs/train_model.py';
     const masterUrl = SPARK_MASTER || 'spark://spark-master:7077';
 
+    // Maybe pass a --retrain arg so your script can handle logic differently
     const cmd = `docker exec spark-master spark-submit --master ${masterUrl} ${sparkScript} --retrain --pipelineId ${pipelineId}`;
-    console.log('[retrainModel] Running command:', cmd);
+    console.log('[retrainSparkModel] Running command:', cmd);
+
     exec(cmd, (error, stdout, stderr) => {
       if (error) {
-        console.error('[retrainModel] error:', error.message);
+        console.error('[retrainSparkModel] error:', error.message);
         return res.status(500).json({ error: error.message });
       }
-      console.log('[retrainModel] stdout:', stdout);
-      console.log('[retrainModel] stderr:', stderr);
+
+      console.log('[retrainSparkModel] stdout:', stdout);
+      console.log('[retrainSparkModel] stderr:', stderr);
 
       pipeline.status = 'retraining';
       pipeline.lastRun = new Date();
@@ -83,7 +87,7 @@ exports.retrainModel = async (req, res) => {
       res.json({ success: true, stdout, stderr });
     });
   } catch (error) {
-    console.error('Error retraining Spark model:', error.message);
+    console.error('[retrainSparkModel] error:', error.message);
     res.status(500).json({ error: error.message });
   }
 };
