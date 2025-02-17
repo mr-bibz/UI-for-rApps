@@ -22,7 +22,7 @@ exports.startProcessing = async (req, res) => {
     }
 
     // If the NiFi flow ID starts with "dummy-", skip the actual NiFi API call
-    if (pipeline.nifiFlow.startsWith('dummy-')) {
+    if (pipeline.nifiFlow.startsWith('nifi-')) {
       console.log(`[NiFi] Detected dummy flow ID: ${pipeline.nifiFlow}. Skipping API call.`);
     } else {
         // Use backticks to interpolate NIFI_BASE_URL and pipeline.nifiFlow

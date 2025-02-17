@@ -6,12 +6,13 @@ const MLModel = require('../models/MLModel');
 const PipelineDefinition = require('../models/PipelineDefinition');
 const { getKafkaProducer } = require('../utils/kafka');
 
-// Import NiFi utility functions (dummy implementations for testing)
-const { 
-  fetchAvailableTemplates, 
-  createMinimalKafkaNiFiTemplate, 
-  cloneNifiTemplate 
-} = require('../utils/nifi');
+// No longer need fetchAvailableTemplates, createMinimalKafkaNiFiTemplate, cloneNifiTemplate
+// if we're purely generating random IDs. We'll comment them out:
+// const { 
+//   fetchAvailableTemplates, 
+//   createMinimalKafkaNiFiTemplate, 
+//   cloneNifiTemplate 
+// } = require('../utils/nifi');
 
 // Utility to run spark-submit commands
 function runCommand(cmd) {
@@ -23,49 +24,49 @@ function runCommand(cmd) {
   });
 }
 
-// In-memory pipeline run state (for tracking ongoing runs)
-const pipelineRuns = {}; // e.g., pipelineRuns[pipelineId] = { processGroupId, kafkaTopic, status, modelId }
+// In-memory pipeline run state
+const pipelineRuns = {};
+
+// 1) Map each template to a generator function
+// so that each template can produce a random NiFi ID each time
+const templateIdGenerators = {
+  default: () => generateRandomTemplateId('default'),
+  qos: () => generateRandomTemplateId('qos'),
+  anomaly: () => generateRandomTemplateId('anomaly')
+};
+
+/**
+ * A helper to produce a random NiFi template ID each time.
+ * e.g. "nifi-default-1677275790826-u3kzv"
+ */
+function generateRandomTemplateId(templateName) {
+  const timestamp = Date.now();
+  const randomPart = Math.random().toString(36).substring(2, 7); // e.g. "u3kzv"
+  return `nifi-${templateName}-${timestamp}-${randomPart}`;
+}
 
 exports.createPipelineDefinition = async (req, res) => {
   try {
     console.log('[createPipelineDefinition] req.body:', req.body);
-    // In manual creation, we expect only JSON with fields "name" and "template"
+    
     const { name, template } = req.body;
     const templateUsed = template || 'default';
-
     if (!name) {
       return res.status(400).json({ error: 'Pipeline name is required.' });
     }
 
-    // Log that we're using manual creation (no file upload)
     console.log(`Creating pipeline "${name}" with template "${templateUsed}"`);
+     
+    // 2) If user picks template not in our map, default to 'default'
+     const generatorFn = templateIdGenerators[templateUsed] || templateIdGenerators['default'];
+     const nifiFlowId = generatorFn();
+     console.log(`[MLPipeline] Generated NiFi flow ID: ${nifiFlowId}`);
 
-    // Attempt to fetch available NiFi templates (dummy returns empty array)
-    const availableTemplates = await fetchAvailableTemplates();
-    let matchingTemplate = availableTemplates.find(tpl =>
-      tpl.template.name.toLowerCase().includes(templateUsed.toLowerCase())
-    );
-    let templateId;
-    if (matchingTemplate) {
-      templateId = matchingTemplate.id;
-      console.log(`Found NiFi template for "${templateUsed}": ${templateId}`);
-    } else {
-      // If no matching template is found, create a minimal one.
-      templateId = await createMinimalKafkaNiFiTemplate(templateUsed);
-      console.log(`Created minimal NiFi template for "${templateUsed}": ${templateId}`);
-    }
-
-    // Clone the selected (or minimal) NiFi template to create a new process group.
-    // Extra logging: print out NIFI_BASE_URL to confirm it's valid.
-    console.log(`Using NIFI_BASE_URL: ${NIFI_BASE_URL}`);
-    const newPgId = await cloneNifiTemplate(templateId);
-    console.log(`New NiFi process group ID: ${newPgId}`);
-
-    // Automatically generate Kafka topic and Spark job values based on the template.
+     // 3) Build the pipeline data
     const pipelineData = {
       name,
       template: templateUsed,
-      nifiFlow: newPgId,
+      nifiFlow: nifiFlowId,                // <-- random NiFi ID
       kafkaTopic: `${templateUsed}-topic-${Date.now()}`,
       sparkJob: `${templateUsed}-spark-job`,
       status: 'inactive',
@@ -74,35 +75,39 @@ exports.createPipelineDefinition = async (req, res) => {
       lastRun: null
     };
 
-    let newPipeline = new PipelineDefinition(pipelineData);
-    let savedPipeline = await newPipeline.save();
+    // 4) Store in MongoDB
+    const newPipeline = new PipelineDefinition(pipelineData);
+    const savedPipeline = await newPipeline.save();
 
     console.log('[createPipelineDefinition] Pipeline created:', savedPipeline);
     res.status(201).json(savedPipeline);
+
   } catch (error) {
     console.error('Error creating pipeline definition:', error.message);
     res.status(500).json({ error: error.message });
   }
 };
 
+/**
+ * We leave runPipeline, nifiCallback, getPipelineStatus unchanged,
+ * except that you no longer need to check or skip "dummy-"
+ * unless you still want to bypass real NiFi calls in runPipeline.
+ */
 exports.runPipeline = async (req, res) => {
   const { pipelineId, processGroupId, kafkaTopic, modelName, version } = req.body;
   console.log(`runPipeline called with NIFI_BASE_URL: ${NIFI_BASE_URL}`);
   if (!pipelineId) {
     return res.status(400).json({ error: 'pipelineId is required' });
   }
-
   try {
     if (processGroupId) {
-      if (processGroupId.startsWith('dummy-')) {
-        console.log(`[NiFi] Detected dummy process group ID: ${processGroupId}. Skipping API call.`);
-      } else {
-        await axios.put(`${NIFI_BASE_URL}/flow/process-groups/${processGroupId}`, {
-          id: processGroupId,
-          state: 'RUNNING'
-        });
-        console.log(`[NiFi] Flow started => PG=${processGroupId}`);
-      }
+      // If you'd like to bypass NiFi calls for random IDs, keep or remove as needed
+      // e.g. if (processGroupId.startsWith('nifi-')) { ... } else { ... }
+      await axios.put(`${NIFI_BASE_URL}/flow/process-groups/${processGroupId}`, {
+        id: processGroupId,
+        state: 'RUNNING'
+      });
+      console.log(`[NiFi] Flow started => PG=${processGroupId}`);
     }
 
     if (kafkaTopic) {
@@ -145,11 +150,11 @@ exports.nifiCallback = async (req, res) => {
   try {
     run.status = 'NiFi ingestion complete';
     console.log(`[NiFi Callback] pipelineId=${pipelineId} => ingestion done`);
-
-    // Trigger Spark job (dummy command)
-    const { modelName, version } = run;
-    const sparkCmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/train_model.py --modelName ${modelName} --version ${version}`;
-    const sparkResult = await runCommand(sparkCmd);
+     
+    // Trigger Spark job (dummy or real)
+      const { modelName, version } = run;
+      const sparkCmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/train_model.py --modelName ${modelName} --version ${version}`;
+      const sparkResult = await runCommand(sparkCmd);
     console.log('[Spark] logs:', sparkResult.stdout);
 
     // Simulate storing an ML model in MongoDB
