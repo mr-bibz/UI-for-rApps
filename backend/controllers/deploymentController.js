@@ -1,21 +1,13 @@
 // controllers/deploymentController.js
 const axios = require('axios');
-const { SPARK_MASTER, NIFI_BASE_URL } = require('../config');
-const PipelineDefinition = require('../models/PipelineDefinition');
-const {submitSparkJob} = require('../utils/spark'); 
 const { exec } = require('child_process');
-const SPARK_REST_URL = 'http://spark-master:6066';
+const { NIFI_BASE_URL, SPARK_MASTER } = require('../config');
+const PipelineDefinition = require('../models/PipelineDefinition');
 
-/*function runCommand(cmd) {
-  return new Promise((resolve, reject) => {
-    exec(cmd, (err, stdout, stderr) => {
-      if (err) return reject(err);
-      resolve({ stdout, stderr });
-    });
-  });
-}
-*/
-
+/**
+ * Start NiFi flow for a given pipeline.
+ * Example route: POST /deployment/:pipelineId/start-processing
+ */
 exports.startProcessing = async (req, res) => {
   try {
     const { pipelineId } = req.params;
@@ -24,48 +16,49 @@ exports.startProcessing = async (req, res) => {
       return res.status(404).json({ error: 'Pipeline not found' });
     }
 
-    // If the NiFi flow ID starts with "dummy-", skip the actual NiFi API call
+    // Optional: skip NiFi call if you consider certain flow IDs dummy
     if (pipeline.nifiFlow.startsWith('nifi-')) {
       console.log(`[NiFi] Detected dummy flow ID: ${pipeline.nifiFlow}. Skipping API call.`);
     } else {
-        // Use backticks to interpolate NIFI_BASE_URL and pipeline.nifiFlow
-        await axios.put(`${NIFI_BASE_URL}/flow/process-groups/${pipeline.nifiFlow}`, {
-            id: pipeline.nifiFlow,
-            state: 'RUNNING'
-          });
-          console.log(`[NiFi] Flow ${pipeline.nifiFlow} started.`);
-        }
-
-        // Optionally update pipeline status
-        pipeline.status = 'processing';
-        pipeline.updatedAt = new Date();
-        await pipeline.save();
-    
-        res.json({
-          success: true,
-          message: `NiFi flow ${pipeline.nifiFlow} started (or skipped if dummy).`
-        });
-    } catch (error) {
-      console.error('Error starting NiFi flow:', error.message);
-      res.status(500).json({ error: error.message });
+      await axios.put(`${NIFI_BASE_URL}/flow/process-groups/${pipeline.nifiFlow}`, {
+        id: pipeline.nifiFlow,
+        state: 'RUNNING'
+      });
+      console.log(`[NiFi] Flow ${pipeline.nifiFlow} started.`);
     }
-  };
 
-  exports.stopProcessing = async (req, res) => {
-    try {
-      const { pipelineId } = req.params;
-      const pipeline = await PipelineDefinition.findById(pipelineId);
-      if (!pipeline) {
-        return res.status(404).json({ error: 'Pipeline not found' });
-      }
-  
-      // If the NiFi flow ID starts with "dummy-", skip the actual NiFi API call
-      if (pipeline.nifiFlow.startsWith('dummy-')) {
-        console.log(`[NiFi] Detected dummy flow ID: ${pipeline.nifiFlow}. Skipping API call.`);
+    pipeline.status = 'processing';
+    pipeline.updatedAt = new Date();
+    await pipeline.save();
+
+    res.json({
+      success: true,
+      message: `NiFi flow ${pipeline.nifiFlow} started (or skipped if dummy).`
+    });
+  } catch (error) {
+    console.error('Error starting NiFi flow:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Stop NiFi flow for a given pipeline.
+ * Example route: POST /deployment/:pipelineId/stop-processing
+ */
+exports.stopProcessing = async (req, res) => {
+  try {
+    const { pipelineId } = req.params;
+    const pipeline = await PipelineDefinition.findById(pipelineId);
+    if (!pipeline) {
+      return res.status(404).json({ error: 'Pipeline not found' });
+    }
+
+    // Optional: skip NiFi call if you consider certain flow IDs dummy
+    if (pipeline.nifiFlow.startsWith('nifi-')) {
+      console.log(`[NiFi] Detected dummy flow ID: ${pipeline.nifiFlow}. Skipping API call.`);
     } else {
-        // Use backticks
-        await axios.put(`${NIFI_BASE_URL}/flow/process-groups/${pipeline.nifiFlow}`, {
-            id: pipeline.nifiFlow,
+      await axios.put(`${NIFI_BASE_URL}/flow/process-groups/${pipeline.nifiFlow}`, {
+        id: pipeline.nifiFlow,
         state: 'STOPPED'
       });
       console.log(`[NiFi] Flow ${pipeline.nifiFlow} stopped.`);
@@ -79,104 +72,92 @@ exports.startProcessing = async (req, res) => {
       success: true,
       message: `NiFi flow ${pipeline.nifiFlow} stopped (or skipped if dummy).`
     });
-} catch (error) {
-  console.error('Error stopping NiFi flow:', error.message);
-  res.status(500).json({ error: error.message });
-}
+  } catch (error) {
+    console.error('Error stopping NiFi flow:', error.message);
+    res.status(500).json({ error: error.message });
+  }
 };
 
-exports.trainModel = async (req, res) => {
-    try {
-      const { pipelineId } = req.params;
-      const pipeline = await PipelineDefinition.findById(pipelineId);
-      if (!pipeline) {
-        return res.status(404).json({ error: 'Pipeline not found' });
-      }
-  
-      // Example Spark REST submission payload:
-      const jobConfig = {
-        action: 'CreateSubmissionRequest',
-        appResource: 'local:///opt/jobs/default-spark-job.py', 
-        // if you have a .py file in the spark-master container
-        mainClass: 'org.apache.spark.deploy.PythonRunner', 
-        // for Python apps, the mainClass is typically this, but can vary
-        clientSparkVersion: '3.3.2',
-        appArgs: [], // Extra args if needed
-        sparkProperties: {
-          'spark.app.name': 'TrainingPipeline',
-          'spark.master': 'spark://spark-master:7077', 
-          // same as SPARK_MASTER in your environment
-          'spark.submit.deployMode': 'client',
-          //'spark.submit.pyFiles': 'local:///opt/jobs/default-spark-job.py',
-          //'spark.pyspark.python': '/usr/bin/python3'
-        }
-      };
-  
-      console.log('[trainModel] Submitting Spark job via REST...');
-      const response = await axios.post(`${SPARK_REST_URL}/v1/submissions/create`, jobConfig);
-      console.log('[Spark REST] Response:', response.data);
 
-      // POST to Spark Master’s REST endpoint
-      
-  
+/**
+ * Train a Spark model by exec'ing spark-submit in the spark-master container.
+ * Example route: POST /deployment/:pipelineId/train-model
+ */
+exports.trainModel = async (req, res) => {
+  try {
+    const { pipelineId } = req.params;
+    const pipeline = await PipelineDefinition.findById(pipelineId);
+    if (!pipeline) {
+      return res.status(404).json({ error: 'Pipeline not found' });
+    }
+
+    // Where your training script is located inside spark-master:
+    // This path must match what you put in Dockerfile.sparkmaster.
+    const sparkScript = '/opt/jobs/train_model.py';
+
+    // The Spark Master URL (e.g. "spark://spark-master:7077")
+    // If not set in config, default here:
+    const masterUrl = SPARK_MASTER || 'spark://spark-master:7077';
+
+    // You can pass pipelineId to your script if needed:
+    const cmd = `docker exec spark-master spark-submit --master ${masterUrl} ${sparkScript} --pipelineId ${pipelineId}`;
+    console.log('[trainModel] Running command:', cmd);
+    exec(cmd, (error, stdout, stderr) => {
+      if (error) {
+        console.error('[trainModel] error:', error.message);
+        return res.status(500).json({ error: error.message });
+      }
+      console.log('[trainModel] stdout:', stdout);
+      console.log('[trainModel] stderr:', stderr);
+
       // Optionally update pipeline status
       pipeline.status = 'training';
       pipeline.lastRun = new Date();
-      await pipeline.save();
-  
-      res.json({
-        success: true,
-        message: 'Spark job submitted via REST',
-        sparkResponse: response.data
-      });
-    } catch (error) {
-      console.error('Error training Spark model:', error.message);
-      res.status(500).json({ error: error.message });
-    }
-  };
-  
-  // Similar for retrainModel
-  exports.retrainModel = async (req, res) => {
-    try {
-      const { pipelineId } = req.params;
-      const pipeline = await PipelineDefinition.findById(pipelineId);
-      if (!pipeline) {
-        return res.status(404).json({ error: 'Pipeline not found' });
-      }
-  
-      // Example: a retrain job, referencing a different script
-      const retrainConfig = {
-        action: 'CreateSubmissionRequest',
-        appResource: 'local:///opt/jobs/default-spark-job_retrain.py',
-        mainClass: 'org.apache.spark.deploy.PythonRunner',
-        clientSparkVersion: '3.3.2',
-        appArgs: [],
-        sparkProperties: {
-          'spark.app.name': 'RetrainingPipeline',
-          'spark.master': 'spark://spark-master:7077',
-          'spark.submit.deployMode': 'client',
-          'spark.submit.pyFiles': 'local:///opt/jobs/default-spark-job.py',
-          'spark.pyspark.python': '/usr/bin/python3'
-        }
-      };
-  
-      console.log('[trainModel] Submitting Spark job via REST...');
-      console.log('[Spark REST] Submitting job to', `${SPARK_REST_URL}/v1/submissions/create`,'with payload:', jobConfig);
+      pipeline.save().catch(err => console.error('Error saving pipeline:', err));
 
-      // POST to Spark Master’s REST endpoint
-      const response = await axios.post(`${SPARK_REST_URL}/v1/submissions/create`, jobConfig);
-  
+      res.json({ success: true, stdout, stderr });
+    });
+  } catch (error) {
+    console.error('Error training Spark model:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Retrain a Spark model by exec'ing spark-submit in the spark-master container.
+ * Example route: POST /deployment/:pipelineId/retrain-model
+ */
+exports.retrainModel = async (req, res) => {
+  try {
+    const { pipelineId } = req.params;
+    const pipeline = await PipelineDefinition.findById(pipelineId);
+    if (!pipeline) {
+      return res.status(404).json({ error: 'Pipeline not found' });
+    }
+
+    // If you have a separate script for retraining or pass a --retrain flag
+    // e.g. same script but different arg
+    const sparkScript = '/opt/jobs/train_model.py';
+    const masterUrl = SPARK_MASTER || 'spark://spark-master:7077';
+
+    const cmd = `docker exec spark-master spark-submit --master ${masterUrl} ${sparkScript} --retrain --pipelineId ${pipelineId}`;
+    console.log('[retrainModel] Running command:', cmd);
+    exec(cmd, (error, stdout, stderr) => {
+      if (error) {
+        console.error('[retrainModel] error:', error.message);
+        return res.status(500).json({ error: error.message });
+      }
+      console.log('[retrainModel] stdout:', stdout);
+      console.log('[retrainModel] stderr:', stderr);
+
       pipeline.status = 'retraining';
       pipeline.lastRun = new Date();
-      await pipeline.save();
-  
-      res.json({
-        success: true,
-        message: 'Retrain job submitted via REST',
-        sparkResponse
-      });
-    } catch (error) {
-      console.error('Error retraining Spark model:', error.message);
-      res.status(500).json({ error: error.message });
-    }
-  };
+      pipeline.save().catch(err => console.error('Error saving pipeline:', err));
+
+      res.json({ success: true, stdout, stderr });
+    });
+  } catch (error) {
+    console.error('Error retraining Spark model:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+};

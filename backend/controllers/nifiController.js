@@ -23,7 +23,7 @@ exports.updateFlowState = async (req, res) => {
   console.log(`[NiFi] updateFlowState called with NIFI_BASE_URL: ${NIFI_BASE_URL}, processGroupId: ${processGroupId}`);
   try {
     // Skip the axios call if it's a dummy ID
-    if (processGroupId.startsWith('dummy-')) {
+    if (processGroupId.startsWith('nifi-')) {
       console.log(`[NiFi] Detected dummy flow ID: ${processGroupId}. Skipping API call.`);
       return res.json({ success: true, data: 'Skipped dummy flow update' });
     }
