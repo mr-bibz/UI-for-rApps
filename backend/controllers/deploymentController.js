@@ -5,7 +5,7 @@ const PipelineDefinition = require('../models/PipelineDefinition');
 const {submitSparkJob} = require('../utils/spark'); 
 const { exec } = require('child_process');
 
-function runCommand(cmd) {
+/*function runCommand(cmd) {
   return new Promise((resolve, reject) => {
     exec(cmd, (err, stdout, stderr) => {
       if (err) return reject(err);
@@ -13,6 +13,7 @@ function runCommand(cmd) {
     });
   });
 }
+*/
 
 exports.startProcessing = async (req, res) => {
   try {
