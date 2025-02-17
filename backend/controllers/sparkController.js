@@ -30,7 +30,9 @@ exports.trainSparkModel = async (req, res) => {
       sparkProperties: {
         'spark.app.name': 'TrainSparkModel',
         'spark.master': 'spark://spark-master:7077',
-        'spark.submit.deployMode': 'client'
+        'spark.submit.deployMode': 'client',
+        'spark.submit.pyFiles': 'local:///opt/jobs/default-spark-job.py',
+        'spark.pyspark.python': '/usr/bin/python3'
       }
     };
 
