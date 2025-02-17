@@ -90,7 +90,8 @@ exports.trainModel = async (req, res) => {
     if (!pipeline) {
       return res.status(404).json({ error: 'Pipeline not found' });
     }
-
+     
+    const SparkSubmitPath = '/opt/bitnami/spark/bin/spark-submit';
     // Where your training script is located inside spark-master:
     // This path must match what you put in Dockerfile.sparkmaster.
     const sparkScript = '/opt/jobs/train_model.py';
@@ -100,7 +101,7 @@ exports.trainModel = async (req, res) => {
     const masterUrl = SPARK_MASTER || 'spark://spark-master:7077';
 
     // You can pass pipelineId to your script if needed:
-    const cmd = `docker exec spark-master spark-submit --master ${masterUrl} ${sparkScript} --pipelineId ${pipelineId}`;
+    const cmd = `docker exec spark-master ${SparkSubmitPath} --master ${masterUrl} ${sparkScript} --pipelineId ${pipelineId}`;
     console.log('[trainModel] Running command:', cmd);
     exec(cmd, (error, stdout, stderr) => {
       if (error) {
@@ -137,10 +138,11 @@ exports.retrainModel = async (req, res) => {
 
     // If you have a separate script for retraining or pass a --retrain flag
     // e.g. same script but different arg
+    const SparkSubmitPath = '/opt/bitnami/spark/bin/spark-submit';
     const sparkScript = '/opt/jobs/train_model.py';
     const masterUrl = SPARK_MASTER || 'spark://spark-master:7077';
 
-    const cmd = `docker exec spark-master spark-submit --master ${masterUrl} ${sparkScript} --retrain --pipelineId ${pipelineId}`;
+    const cmd = `docker exec spark-master ${SparkSubmitPath} --master ${masterUrl} ${sparkScript} --retrain --pipelineId ${pipelineId}`;
     console.log('[retrainModel] Running command:', cmd);
     exec(cmd, (error, stdout, stderr) => {
       if (error) {
