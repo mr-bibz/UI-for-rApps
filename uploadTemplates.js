@@ -22,6 +22,7 @@ async function uploadTemplate(templatePath) {
       headers: form.getHeaders()
     });
     console.log(`Successfully uploaded template from ${templatePath}`);
+    console.log("Full response:", JSON.stringify(response.data, null, 2));
     return response.data;
   } catch (error) {
     console.error(`Error uploading template ${templatePath}:`, error.message);
