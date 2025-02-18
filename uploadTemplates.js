@@ -2,7 +2,7 @@ const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs');
 const path = require('path');
-const { NIFI_BASE_URL } = require('.backend/config/index'); // Ensure this points to your NiFi API base URL, e.g., 'http://localhost:8080/nifi-api'
+const { NIFI_BASE_URL } = require('./backend/config/index'); // Ensure this points to your NiFi API base URL, e.g., 'http://localhost:8080/nifi-api'
 
 /**
  * Uploads a single NiFi template.
