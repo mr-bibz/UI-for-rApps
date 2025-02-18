@@ -18,24 +18,6 @@ exports.fetchAvailableTemplates = async () => {
 };
 
 /**
- * Fallback: Create a minimal NiFi template dynamically.
- * In a production scenario, you might upload a template file via NiFi's REST API
- * (POST to /nifi-api/process-groups/{parentId}/templates/upload).
- * For now, this function is a stub that logs and returns a generated minimal template ID.
- */
-exports.createMinimalKafkaNiFiTemplate = async (templateName) => {
-  try {
-    console.log(`No matching NiFi template found for "${templateName}". Creating a minimal template...`);
-    // Here you would normally upload a template file to NiFi.
-    // For now, we simulate it by returning a generated minimal template ID.
-    return `minimal-template-id-${templateName}`;
-  } catch (error) {
-    console.error(`Error creating minimal Kafka NiFi template: ${error.message}`);
-    throw error;
-  }
-};
-
-/**
  * Clone (instantiate) a NiFi template to create a new process group (PG).
  * Uses the real NiFi API:
  *  - POST /nifi-api/process-groups/{parentGroupId}/template-instance
@@ -66,14 +48,33 @@ exports.cloneNifiTemplate = async (templateId) => {
     
     const newPgId = instanceResp.data.snippet.processGroups[0].id;
     console.log(`[NiFi] New process group created: ${newPgId}`);
-    // Now update the new process group state to RUNNING.
-    const stateUrl = `${NIFI_BASE_URL}/flow/process-groups/${newPgId}/state`;
+    
+    // Start the new process group by updating its state to RUNNING.
+    const stateUrl =`${NIFI_BASE_URL}/flow/process-groups/${newPgId}/state`;
     await axios.put(stateUrl, { state: 'RUNNING' });
     console.log(`[NiFi] Process group ${newPgId} is now RUNNING`);
     
     return newPgId;
   } catch (error) {
     console.error(`Error cloning NiFi template: ${error.message}`);
+    throw error;
+  }
+};
+
+/**
+ * Fallback: Create a minimal NiFi template dynamically.
+ * In a production scenario, you might upload a template file via NiFi's REST API
+ * (POST to /nifi-api/process-groups/{parentId}/templates/upload).
+ * For now, this function is a stub that logs and returns a generated minimal template ID.
+ */
+exports.createMinimalKafkaNiFiTemplate = async (templateName) => {
+  try {
+    console.log(`No matching NiFi template found for "${templateName}". Creating a minimal template...`);
+    // Here you would normally upload a template file to NiFi.
+    // For now, we simulate it by returning a generated minimal template ID.
+    return `minimal-template-id-${templateName}`;
+  } catch (error) {
+    console.error(`Error creating minimal Kafka NiFi template: ${error.message}`);
     throw error;
   }
 };
