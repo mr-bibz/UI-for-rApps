@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<template>
+  <groupId>32345678-1234-1234-1234-123456789002</groupId>
+  <name>anomaly_template</name>
+  <description>Template for Anomaly Detection ML Pipeline</description>
+  <snippet>
+    <processGroups/>
+    <connections>
+      <connection>
+        <id>conn-anomaly-1</id>
+        <sourceId>proc-anomaly-1</sourceId>
+        <destinationId>proc-anomaly-2</destinationId>
+        <name>Connection: ExecuteScript to PutFile</name>
+        <flowFileExpiration>0 sec</flowFileExpiration>
+        <backPressureObjectThreshold>8000</backPressureObjectThreshold>
+        <backPressureDataSizeThreshold>750 MB</backPressureDataSizeThreshold>
+      </connection>
+    </connections>
+    <processors>
+      <processor>
+        <id>proc-anomaly-1</id>
+        <name>ExecuteScript</name>
+        <type>org.apache.nifi.processors.script.ExecuteScript</type>
+        <bundle>
+          <group>org.apache.nifi</group>
+          <artifact>nifi-standard-processors</artifact>
+          <version>1.12.1</version>
+        </bundle>
+        <position>
+          <x>200.0</x>
+          <y>200.0</y>
+        </position>
+        <config>
+          <properties>
+            <entry>
+              <key>Script Engine</key>
+              <value>python</value>
+            </entry>
+            <entry>
+              <key>Script Body</key>
+              <value>
+import sys
+print("Anomaly detection script executed!")
+              </value>
+            </entry>
+          </properties>
+          <schedulingPeriod>1.5 sec</schedulingPeriod>
+          <penaltyDuration>30 sec</penaltyDuration>
+          <yieldDuration>1 sec</yieldDuration>
+          <bulletinLevel>WARN</bulletinLevel>
+          <schedulingStrategy>TIMER_DRIVEN</schedulingStrategy>
+          <executionNode>ALL</executionNode>
+        </config>
+      </processor>
+      <processor>
+        <id>proc-anomaly-2</id>
+        <name>PutFile</name>
+        <type>org.apache.nifi.processors.standard.PutFile</type>
+        <bundle>
+          <group>org.apache.nifi</group>
+          <artifact>nifi-standard-processors</artifact>
+          <version>1.12.1</version>
+        </bundle>
+        <position>
+          <x>500.0</x>
+          <y>200.0</y>
+        </position>
+        <config>
+          <properties>
+            <entry>
+              <key>Directory</key>
+              <value>/tmp/anomaly</value>
+            </entry>
+          </properties>
+          <schedulingPeriod>0 sec</schedulingPeriod>
+          <penaltyDuration>30 sec</penaltyDuration>
+          <yieldDuration>1 sec</yieldDuration>
+          <bulletinLevel>WARN</bulletinLevel>
+          <schedulingStrategy>TIMER_DRIVEN</schedulingStrategy>
+          <executionNode>ALL</executionNode>
+        </config>
+      </processor>
+    </processors>
+    <inputPorts/>
+    <outputPorts/>
+  </snippet>
+  <timestamp>1670000002000</timestamp>
+</template>

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<template>
+  <groupId>12345678-1234-1234-1234-123456789000</groupId>
+  <name>default_template</name>
+  <description>Template for Default ML Pipeline</description>
+  <snippet>
+    <processGroups/>
+    <connections>
+      <connection>
+        <id>conn-default-1</id>
+        <sourceId>proc-default-1</sourceId>
+        <destinationId>proc-default-2</destinationId>
+        <name>Connection: GenerateFlowFile to LogAttribute</name>
+        <flowFileExpiration>0 sec</flowFileExpiration>
+        <backPressureObjectThreshold>10000</backPressureObjectThreshold>
+        <backPressureDataSizeThreshold>1 GB</backPressureDataSizeThreshold>
+      </connection>
+    </connections>
+    <processors>
+      <processor>
+        <id>proc-default-1</id>
+        <name>GenerateFlowFile</name>
+        <type>org.apache.nifi.processors.standard.GenerateFlowFile</type>
+        <bundle>
+          <group>org.apache.nifi</group>
+          <artifact>nifi-standard-processors</artifact>
+          <version>1.12.1</version>
+        </bundle>
+        <position>
+          <x>100.0</x>
+          <y>100.0</y>
+        </position>
+        <config>
+          <properties>
+            <entry>
+              <key>File Size</key>
+              <value>1 KB</value>
+            </entry>
+            <entry>
+              <key>Batch Size</key>
+              <value>1</value>
+            </entry>
+          </properties>
+          <schedulingPeriod>1 sec</schedulingPeriod>
+          <penaltyDuration>30 sec</penaltyDuration>
+          <yieldDuration>1 sec</yieldDuration>
+          <bulletinLevel>WARN</bulletinLevel>
+          <schedulingStrategy>TIMER_DRIVEN</schedulingStrategy>
+          <executionNode>ALL</executionNode>
+        </config>
+      </processor>
+      <processor>
+        <id>proc-default-2</id>
+        <name>LogAttribute</name>
+        <type>org.apache.nifi.processors.standard.LogAttribute</type>
+        <bundle>
+          <group>org.apache.nifi</group>
+          <artifact>nifi-standard-processors</artifact>
+          <version>1.12.1</version>
+        </bundle>
+        <position>
+          <x>400.0</x>
+          <y>100.0</y>
+        </position>
+        <config>
+          <properties/>
+          <schedulingPeriod>0 sec</schedulingPeriod>
+          <penaltyDuration>30 sec</penaltyDuration>
+          <yieldDuration>1 sec</yieldDuration>
+          <bulletinLevel>WARN</bulletinLevel>
+          <schedulingStrategy>TIMER_DRIVEN</schedulingStrategy>
+          <executionNode>ALL</executionNode>
+        </config>
+      </processor>
+    </processors>
+    <inputPorts/>
+    <outputPorts/>
+  </snippet>
+  <timestamp>1670000000000</timestamp>
+</template>
