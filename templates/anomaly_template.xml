@@ -1,24 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <template>
-  <groupId>32345678-1234-1234-1234-123456789002</groupId>
+  <groupId>33333333-3333-3333-3333-333333333333</groupId>
   <name>anomaly_template</name>
   <description>Template for Anomaly Detection ML Pipeline</description>
   <snippet>
     <processGroups/>
-    <connections>
-      <connection>
-        <id>conn-anomaly-1</id>
-        <sourceId>proc-anomaly-1</sourceId>
-        <destinationId>proc-anomaly-2</destinationId>
-        <name>Connection: ExecuteScript to PutFile</name>
-        <flowFileExpiration>0 sec</flowFileExpiration>
-        <backPressureObjectThreshold>8000</backPressureObjectThreshold>
-        <backPressureDataSizeThreshold>750 MB</backPressureDataSizeThreshold>
-      </connection>
-    </connections>
     <processors>
       <processor>
-        <id>proc-anomaly-1</id>
+        <id>anomaly-proc-1</id>
         <name>ExecuteScript</name>
         <type>org.apache.nifi.processors.script.ExecuteScript</type>
         <bundle>
@@ -40,7 +29,7 @@
               <key>Script Body</key>
               <value>
 import sys
-print("Anomaly detection script executed!")
+print("Anomaly detection executed!")
               </value>
             </entry>
           </properties>
@@ -53,7 +42,7 @@ print("Anomaly detection script executed!")
         </config>
       </processor>
       <processor>
-        <id>proc-anomaly-2</id>
+        <id>anomaly-proc-2</id>
         <name>PutFile</name>
         <type>org.apache.nifi.processors.standard.PutFile</type>
         <bundle>
@@ -81,6 +70,17 @@ print("Anomaly detection script executed!")
         </config>
       </processor>
     </processors>
+    <connections>
+      <connection>
+        <id>anomaly-conn-1</id>
+        <sourceId>anomaly-proc-1</sourceId>
+        <destinationId>anomaly-proc-2</destinationId>
+        <name>Connection from ExecuteScript to PutFile</name>
+        <flowFileExpiration>0 sec</flowFileExpiration>
+        <backPressureObjectThreshold>8000</backPressureObjectThreshold>
+        <backPressureDataSizeThreshold>750 MB</backPressureDataSizeThreshold>
+      </connection>
+    </connections>
     <inputPorts/>
     <outputPorts/>
   </snippet>

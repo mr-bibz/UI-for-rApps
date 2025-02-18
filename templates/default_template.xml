@@ -1,24 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <template>
-  <groupId>12345678-1234-1234-1234-123456789000</groupId>
+  <groupId>11111111-1111-1111-1111-111111111111</groupId>
   <name>default_template</name>
   <description>Template for Default ML Pipeline</description>
   <snippet>
     <processGroups/>
-    <connections>
-      <connection>
-        <id>conn-default-1</id>
-        <sourceId>proc-default-1</sourceId>
-        <destinationId>proc-default-2</destinationId>
-        <name>Connection: GenerateFlowFile to LogAttribute</name>
-        <flowFileExpiration>0 sec</flowFileExpiration>
-        <backPressureObjectThreshold>10000</backPressureObjectThreshold>
-        <backPressureDataSizeThreshold>1 GB</backPressureDataSizeThreshold>
-      </connection>
-    </connections>
     <processors>
       <processor>
-        <id>proc-default-1</id>
+        <id>default-proc-1</id>
         <name>GenerateFlowFile</name>
         <type>org.apache.nifi.processors.standard.GenerateFlowFile</type>
         <bundle>
@@ -50,7 +39,7 @@
         </config>
       </processor>
       <processor>
-        <id>proc-default-2</id>
+        <id>default-proc-2</id>
         <name>LogAttribute</name>
         <type>org.apache.nifi.processors.standard.LogAttribute</type>
         <bundle>
@@ -73,6 +62,17 @@
         </config>
       </processor>
     </processors>
+    <connections>
+      <connection>
+        <id>default-conn-1</id>
+        <sourceId>default-proc-1</sourceId>
+        <destinationId>default-proc-2</destinationId>
+        <name>Connection from GenerateFlowFile to LogAttribute</name>
+        <flowFileExpiration>0 sec</flowFileExpiration>
+        <backPressureObjectThreshold>10000</backPressureObjectThreshold>
+        <backPressureDataSizeThreshold>1 GB</backPressureDataSizeThreshold>
+      </connection>
+    </connections>
     <inputPorts/>
     <outputPorts/>
   </snippet>
