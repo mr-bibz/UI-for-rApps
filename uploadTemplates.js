@@ -2,37 +2,60 @@ const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs');
 const path = require('path');
-const { NIFI_BASE_URL } = require('./backend/config/index'); // Ensure this points to your NiFi API base URL, e.g., 'http://localhost:8080/nifi-api'
+const xml2js = require('xml2js');
+const { NIFI_BASE_URL } = require('./backend/config'); // Adjust path if needed
 
-/**
- * Uploads a single NiFi template.
- * @param {string} templatePath - The local file path to the XML template.
- * @returns {Promise<object>} - The JSON response from NiFi.
- */
+// Parse the XML response and extract the template ID
+async function parseTemplateId(xmlString) {
+  const parser = new xml2js.Parser();
+  try {
+    const result = await parser.parseStringPromise(xmlString);
+    // The expected structure is:
+    // result.templateEntity.template[0].id[0]
+    if (
+      result &&
+      result.templateEntity &&
+      result.templateEntity.template &&
+      result.templateEntity.template[0].id &&
+      result.templateEntity.template[0].id[0]
+    ) {
+      return result.templateEntity.template[0].id[0];
+    } else {
+      return null;
+    }
+  } catch (err) {
+    console.error("Error parsing XML:", err.message);
+    return null;
+  }
+}
+
+// Upload a single template file
 async function uploadTemplate(templatePath) {
   const form = new FormData();
-  // The field name expected by NiFi is "template"
+  // 'template' is the field name expected by NiFi
   form.append('template', fs.createReadStream(templatePath));
 
   // The upload endpoint uses the root process group as the parent.
   const url = `${NIFI_BASE_URL}/process-groups/root/templates/upload`;
   console.log(`Uploading template from: ${templatePath}`);
   try {
+    // Expecting a text response (XML)
     const response = await axios.post(url, form, {
-      headers: form.getHeaders()
+      headers: form.getHeaders(),
+      responseType: 'text'
     });
     console.log(`Successfully uploaded template from ${templatePath}`);
-    console.log("Full response:", JSON.stringify(response.data, null, 2));
-    return response.data;
+    console.log("Full response:", response.data);
+    
+    const templateId = await parseTemplateId(response.data);
+    return { id: templateId, raw: response.data };
   } catch (error) {
     console.error(`Error uploading template ${templatePath}:`, error.message);
     throw error;
   }
 }
 
-/**
- * Uploads all predefined templates.
- */
+// Upload all predefined templates
 async function uploadAllTemplates() {
   const templates = [
     { name: 'default', file: 'default_template.xml' },
@@ -44,7 +67,7 @@ async function uploadAllTemplates() {
     const templatePath = path.join(__dirname, 'templates', template.file);
     try {
       const data = await uploadTemplate(templatePath);
-      console.log(`Template "${template.name}" uploaded. Returned Template ID: ${data.template ? data.template.id : 'N/A'}`);
+      console.log(`Template "${template.name}" uploaded. Returned Template ID: ${data.id || 'N/A'}`);
     } catch (error) {
         console.error(`Failed to upload template "${template.name}":`, error.message);
     }
