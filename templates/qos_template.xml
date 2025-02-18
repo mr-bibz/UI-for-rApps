@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <template encoding-version="1.3">
-    <description>For anomaly predictions</description>
+    <description>This is for testing qos strategies</description>
     <groupId>3ac974e5-0194-1000-3e5f-34ad91b4eea3</groupId>
-    <name>anomaly_template</name>
+    <name>Template 2</name>
     <snippet>
         <processors>
             <id>dfb9ffba-4774-3eee-0000-000000000000</id>
@@ -164,5 +164,5 @@
             <type>org.apache.nifi.processors.email.ConsumeEWS</type>
         </processors>
     </snippet>
-    <timestamp>02/18/2025 21:26:04 UTC</timestamp>
+    <timestamp>02/18/2025 21:35:25 UTC</timestamp>
 </template>
