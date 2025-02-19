@@ -30,10 +30,7 @@ const pipelineRuns = {};
 /**
  * Create a new pipeline definition.
  * Uses the real NiFi API to instantiate (clone) a template based on the selected template.
- * This returns a real process group ID, which is stored as nifiFlow in MongoDB.
- *
- * Expected input (from the UI):
- *   { name: "My Pipeline", template: "qos" }   // or "default", "anomaly"
+ * Expected input (from the UI): { name: "My Pipeline", template: "qos" }
  */
 exports.createPipelineDefinition = async (req, res) => {
   try {
@@ -48,8 +45,7 @@ exports.createPipelineDefinition = async (req, res) => {
     }
     
     console.log(`Creating pipeline "${name}" with template "${selectedTemplate}"`);
-     
-    // 1. Fetch available NiFi templates from the real API.
+     // 1. Fetch available NiFi templates from the real API.
      const availableTemplates = await fetchAvailableTemplates();
     
      // 2. Look for a matching template by name (case-insensitive).
@@ -59,25 +55,27 @@ exports.createPipelineDefinition = async (req, res) => {
      
      let templateId;
      if (matchingTemplate) {
-       templateId = matchingTemplate.id;
+       // Extract the template ID from the nested object
+       templateId = matchingTemplate.template.id;
        console.log(`Found NiFi template for "${selectedTemplate}": ${templateId}`);
       } else {
-        // 3. Fallback: Create a minimal NiFi template (this stub can later be replaced with a real upload)
+        // 3. Fallback: Create a minimal NiFi template (stub for now)
         templateId = await createMinimalKafkaNiFiTemplate(selectedTemplate);
         console.log(`Created minimal NiFi template for "${selectedTemplate}": ${templateId}`);
       }
     
       // 4. Clone (instantiate) the chosen template to create a real process group.
-      //    This function calls NiFi's POST /nifi-api/process-groups/root/template-instance
-      //    and then starts the new process group by PUT /nifi-api/flow/process-groups/{newPgId}/state.
+      //    This function calls:
+      //      POST /nifi-api/process-groups/root/template-instance
+      //    and then starts the new process group via:
+      //      PUT /nifi-api/flow/process-groups/{newPgId}/state with { state: "RUNNING" }.
       const newPgId = await cloneNifiTemplate(templateId);
       console.log(`[MLPipeline] Real NiFi flow ID obtained: ${newPgId}`);
-
       // 5. Build the pipeline document with the real NiFi flow ID.
     const pipelineData = {
       name,
       template: selectedTemplate,
-      nifiFlow: newPgId, // Real NiFi process group ID
+      nifiFlow: newPgId,                // Real NiFi process group ID
       kafkaTopic: `${selectedTemplate}-topic-${Date.now()}`,
       sparkJob: `${selectedTemplate}-spark-job`,
       status: 'inactive',
@@ -86,7 +84,7 @@ exports.createPipelineDefinition = async (req, res) => {
       lastRun: null
     };
 
-    // 6. Store the pipeline in MongoDB.
+    // 6. Store in MongoDB.
     const newPipeline = new PipelineDefinition(pipelineData);
     const savedPipeline = await newPipeline.save();
     
@@ -101,7 +99,7 @@ exports.createPipelineDefinition = async (req, res) => {
 
 /**
  * Run the pipeline:
- * - Start the NiFi flow by sending a PUT request to NiFi API.
+ * - Start the NiFi flow by sending a PUT request to the NiFi API.
  * - Produce a Kafka message to initiate data ingestion.
  */
 exports.runPipeline = async (req, res) => {
@@ -112,7 +110,7 @@ exports.runPipeline = async (req, res) => {
   }
   try {
     if (processGroupId) {
-      // Always call the real NiFi API (no dummy logic)
+      // Call the real NiFi API to update process group state to RUNNING.
       await axios.put(`${NIFI_BASE_URL}/flow/process-groups/${processGroupId}/state`, {
         state: 'RUNNING'
       });
@@ -145,7 +143,7 @@ exports.runPipeline = async (req, res) => {
 };
 
 /**
- * NiFi Callback (triggered by NiFi when ingestion completes) to then trigger Spark job.
+ * NiFi Callback (triggered by NiFi when ingestion completes) to then trigger a Spark job.
  */
 exports.nifiCallback = async (req, res) => {
   const { pipelineId } = req.body;
@@ -159,7 +157,8 @@ exports.nifiCallback = async (req, res) => {
   try {
     run.status = 'NiFi ingestion complete';
     console.log(`[NiFi Callback] pipelineId=${pipelineId} => ingestion done`);
-    // Trigger Spark job (this part remains as before)
+
+    // Trigger Spark job (using local spark-submit command)
     const { modelName, version } = run;
     const sparkCmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/train_model.py --modelName ${modelName} --version ${version}`;
     const sparkResult = await runCommand(sparkCmd);
