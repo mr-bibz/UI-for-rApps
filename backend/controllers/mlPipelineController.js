@@ -45,14 +45,21 @@ exports.createPipelineDefinition = async (req, res) => {
     }
     
     console.log(`Creating pipeline "${name}" with template "${selectedTemplate}"`);
-     // 1. Fetch available NiFi templates from the real API.
-     const availableTemplates = await fetchAvailableTemplates();
+   
+    // Fetch available templates from NiFi
+    const availableTemplates = await fetchAvailableTemplates();
+    console.log('Fetched templates from NiFi:', availableTemplates.map(t => ({
+      name: t.template.name,
+      description: t.template.description,
+      id: t.template.id
+    })));
     
-     // 2. Look for a matching template by name (case-insensitive).
-     let matchingTemplate = availableTemplates.find(tpl =>
-      (tpl.template.name && tpl.template.name.toLowerCase().includes(selectedTemplate)) ||
-      (tpl.template.description && tpl.template.description.toLowerCase().includes(selectedTemplate))
-    );
+    // Look for a matching template (by name or description)
+    let matchingTemplate = availableTemplates.find(tpl => {
+      const tplName = tpl.template.name ? tpl.template.name.toLowerCase() : "";
+      const tplDesc = tpl.template.description ? tpl.template.description.toLowerCase() : "";
+      return tplName.includes(selectedTemplate) || tplDesc.includes(selectedTemplate);
+    });
 
      let templateId;
      if (matchingTemplate) {
