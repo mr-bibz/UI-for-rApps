@@ -8,7 +8,7 @@ const { NIFI_BASE_URL } = require('../config');
  */
 exports.fetchAvailableTemplates = async () => {
   try {
-    const response = await axios.get(`${NIFI_BASE_URL}/templates`);
+    const response = await axios.get(`${NIFI_BASE_URL}/flow/templates`);
      // NiFi returns an object with a "templates" property.
      return response.data.templates || [];
     } catch (error) {
