@@ -39,6 +39,8 @@ exports.cloneNifiTemplate = async (templateId) => {
       }
     );
     
+    console.log('Template instance response:', JSON.stringify(instanceResp.data, null, 2)); 
+
     // Validate the response and extract the new process group ID.
     if (
       !instanceResp.data ||
