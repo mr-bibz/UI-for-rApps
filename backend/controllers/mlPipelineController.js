@@ -50,9 +50,10 @@ exports.createPipelineDefinition = async (req, res) => {
     
      // 2. Look for a matching template by name (case-insensitive).
      let matchingTemplate = availableTemplates.find(tpl =>
-       tpl.template.name.toLowerCase().includes(selectedTemplate)
-     );
-     
+      (tpl.template.name && tpl.template.name.toLowerCase().includes(selectedTemplate)) ||
+      (tpl.template.description && tpl.template.description.toLowerCase().includes(selectedTemplate))
+    );
+
      let templateId;
      if (matchingTemplate) {
        // Extract the template ID from the nested object
