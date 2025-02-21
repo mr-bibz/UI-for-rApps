@@ -51,8 +51,6 @@ services:
       - NIFI_JVM_HEAP_MAX=4G
     ports:
       - "8080:8080"
-    volumes:
-    - ./nifi.properties:/opt/nifi/nifi-current/conf/nifi.properties  
 
   ########################################
   # SPARK MASTER
