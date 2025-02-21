@@ -19,49 +19,55 @@ exports.fetchAvailableTemplates = async () => {
 };
 
 /**
- * Clone (instantiate) a NiFi template to create a new process group (PG).
- * Uses the real NiFi API endpoints:
- *   - POST {NIFI_BASE_URL}/process-groups/root/template-instance 
- *   - PUT {NIFI_BASE_URL}/flow/process-groups/{newPgId}/state with { state: "RUNNING" }
+ * Clone (instantiate) a NiFi template to create a new process group.
+ * Then update the state to RUNNING using the returned URI.
  *
- * Returns the new process group ID.
+ * @param {string} templateId - The real template ID.
+ * @returns {Promise<string>} - The new process group ID.
  */
-
 exports.cloneNifiTemplate = async (templateId) => {
   try {
     const parentGroupId = 'root';
-    const instanceUrl =  `${NIFI_BASE_URL}/process-groups/${parentGroupId}/template-instance`;
-    const instanceResp = await axios.post(instanceUrl, {
+    const instanceUrl = `${NIFI_BASE_URL}/process-groups/${parentGroupId}/template-instance`;
+     // Instantiate the template.
+     const instanceResp = await axios.post(instanceUrl, {
       templateId,
       originX: 0,
       originY: 0
     });
     
     console.log('Template instance response:', JSON.stringify(instanceResp.data, null, 2));
-    
-    // Try to get the process group from "flow" or "snippet".
-    let processGroups = [];
-    if (instanceResp.data.flow && instanceResp.data.flow.processGroups && instanceResp.data.flow.processGroups.length > 0) {
-      processGroups = instanceResp.data.flow.processGroups;
-    } else if (instanceResp.data.snippet && instanceResp.data.snippet.processGroups && instanceResp.data.snippet.processGroups.length > 0) {
-      processGroups = instanceResp.data.snippet.processGroups;
+
+    // Extract process group from response.
+    let processGroups = instanceResp.data.flow && instanceResp.data.flow.processGroups;
+    if (!processGroups || processGroups.length === 0) {
+      processGroups = instanceResp.data.snippet && instanceResp.data.snippet.processGroups;
     }
     
     if (!processGroups || processGroups.length === 0) {
-      throw new Error('No process groups returned from template instance response. Ensure that your exported template is valid.');
+      throw new Error('No process groups returned from template instance response. Ensure the exported template is valid.');
     }
     
     const newPg = processGroups[0];
     const newPgId = newPg.id;
     console.log(`[NiFi] New process group created: ${newPgId}`);
 
-     // Use the returned URI if available; otherwise, fall back to constructing it.
-     const newPgUri = newPg.uri ? newPg.uri : `${NIFI_BASE_URL}/flow/process-groups/${newPgId}`;
-     console.log(`[NiFi] Using process group URI: ${newPgUri}`);
-      // Update the state of the new process group to RUNNING.
-    const stateUrl = `${newPgUri}/state`;
-    const stateResp = await axios.put(stateUrl, { state: 'RUNNING' });
+       // Use the returned URI if available.
+       const newPgUri = newPg.uri || `${NIFI_BASE_URL}/flow/process-groups/${newPgId}`;
+       const stateUrl = `${newPgUri}/state`;
+       console.log(`[NiFi] Updating state at URL: ${stateUrl}`);
+
+        // Construct payload with revision and component.
+    const statePayload = {
+      revision: { clientId: "nifi-client", version: 0 },
+      component: { id: newPgId },
+      state: "RUNNING"
+    };
+
+    // Update state.
+    const stateResp = await axios.put(stateUrl, statePayload);
     console.log(`[NiFi] Process group ${newPgId} state update response status: ${stateResp.status}`);
+
     return newPgId;
   } catch (error) {
     console.error(`Error cloning NiFi template: ${error.message}`);
