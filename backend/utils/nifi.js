@@ -54,9 +54,9 @@ exports.cloneNifiTemplate = async (templateId) => {
  
     // Use the returned URI, but replace "localhost" with "nifi" so it resolves correctly from the backend container.
     let newPgUri = newPg.uri;
-    if (newPgUri && newPgUri.includes("localhost")) {
-      newPgUri = newPgUri.replace("localhost", "nifi");
-    } else if (!newPgUri) {
+    if (newPgUri) {
+      newPgUri = newPgUri.replace('/nifi-api/process-groups/', '/nifi-api/flow/process-groups/');
+    } else {
       newPgUri = `${NIFI_BASE_URL}/flow/process-groups/${newPgId}`;
     }
     console.log(`[NiFi] Using process group URI: ${newPgUri}`);
