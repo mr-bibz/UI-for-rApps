@@ -68,9 +68,11 @@ exports.cloneNifiTemplate = async (templateId) => {
     // Construct payload with revision and component.
     const statePayload = {
       revision: { clientId: "nifi-client", version: 0 },
-     // component: { id: newPgId },
+      component: { id: newPgId },
       state: "RUNNING"
     };
+
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
     // Update state.
     const stateResp = await axios.put(stateUrl, statePayload);
