@@ -51,13 +51,21 @@ exports.cloneNifiTemplate = async (templateId) => {
     const newPg = processGroups[0];
     const newPgId = newPg.id;
     console.log(`[NiFi] New process group created: ${newPgId}`);
+ 
+    // Use the returned URI, but replace "localhost" with "nifi" so it resolves correctly from the backend container.
+    let newPgUri = newPg.uri;
+    if (newPgUri && newPgUri.includes("localhost")) {
+      newPgUri = newPgUri.replace("localhost", "nifi");
+    } else if (!newPgUri) {
+      newPgUri = `${NIFI_BASE_URL}/flow/process-groups/${newPgId}`;
+    }
+    console.log(`[NiFi] Using process group URI: ${newPgUri}`);
+    
+    // Construct the state update URL.
+    const stateUrl = `${newPgUri}/state`;
+    console.log(`[NiFi] Updating state at URL: ${stateUrl}`);
 
-       // Use the returned URI if available.
-       const newPgUri = newPg.uri || `${NIFI_BASE_URL}/flow/process-groups/${newPgId}`;
-       const stateUrl = `${newPgUri}/state`;
-       console.log(`[NiFi] Updating state at URL: ${stateUrl}`);
-
-        // Construct payload with revision and component.
+    // Construct payload with revision and component.
     const statePayload = {
       revision: { clientId: "nifi-client", version: 0 },
       component: { id: newPgId },
