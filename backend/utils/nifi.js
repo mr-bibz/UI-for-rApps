@@ -68,7 +68,7 @@ exports.cloneNifiTemplate = async (templateId) => {
     // Construct payload with revision and component.
     const statePayload = {
       revision: { clientId: "nifi-client", version: 0 },
-      component: { id: newPgId },
+     // component: { id: newPgId },
       state: "RUNNING"
     };
 
