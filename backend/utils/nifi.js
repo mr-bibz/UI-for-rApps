@@ -39,30 +39,29 @@ exports.cloneNifiTemplate = async (templateId) => {
     
     console.log('Template instance response:', JSON.stringify(instanceResp.data, null, 2));
     
-    // Attempt to extract the new process group info from either 'flow' or 'snippet'
-    let processGroups;
-    if (instanceResp.data.flow && instanceResp.data.flow.processGroups && instanceResp.data.flow.processGroups.length > 0) {
-      processGroups = instanceResp.data.flow.processGroups;
-    } else if (instanceResp.data.snippet && instanceResp.data.snippet.processGroups && instanceResp.data.snippet.processGroups.length > 0) {
-      processGroups = instanceResp.data.snippet.processGroups;
-    } else {
+    // Try to extract the new process group from the response.
+    // Depending on NiFi version, it may be in instanceResp.data.flow.processGroups
+    let processGroups = instanceResp.data.flow && instanceResp.data.flow.processGroups;
+    if (!processGroups || processGroups.length === 0) {
+      // Alternatively, check the snippet field.
+      processGroups = instanceResp.data.snippet && instanceResp.data.snippet.processGroups;
+    }
+    
+    if (!processGroups || processGroups.length === 0) {
       throw new Error('No process groups returned from template instance response. Ensure the exported template is valid.');
     }
-    
-    const newPg = processGroups[0];
-    const newPgId = newPg.id;
+
+    const newPgId = processGroups[0].id;
     console.log(`[NiFi] New process group created: ${newPgId}`);
-    // Use the URI provided by NiFi if available.
-    let newPgUri = newPg.uri;
-    if (!newPgUri) {
-      // Fall back to constructing the URL (though this may be less reliable)
-      newPgUri = `${NIFI_BASE_URL}/flow/process-groups/${newPgId}`;
-    }
-    
-    // Append "/state" to the URI to update its state.
-    const stateUrl = `${newPgUri}/state`;
-    await axios.put(stateUrl, { state: 'RUNNING' });
-    console.log(`[NiFi] Process group ${newPgId} is now RUNNING)`);
+
+    // Construct the state update URL using NIFI_BASE_URL (ensure no trailing slash)
+    const stateUrl = `${NIFI_BASE_URL}/flow/process-groups/${newPgId}/state`;
+    console.log(`Updating state at URL: ${stateUrl}`);
+
+    // Update the state of the new process group to RUNNING.
+    const stateResp = await axios.put(stateUrl, { state: 'RUNNING' });
+    console.log(`[NiFi] Process group ${newPgId} state update response status: ${stateResp.status}`);
+
     return newPgId;
   } catch (error) {
     console.error(`Error cloning NiFi template: ${error.message}`);
