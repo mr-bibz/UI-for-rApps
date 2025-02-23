@@ -4,6 +4,12 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const { MONGODB_URL, PORT } = require('./config');
 
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+  console.log('Uploads directory created.');
+}
+
 const nifiRoutes = require('./routes/nifiRoutes');
 const kafkaRoutes = require('./routes/kafkaRoutes');
 const sparkRoutes = require('./routes/sparkRoutes');

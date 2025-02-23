@@ -8,6 +8,9 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm install
 
+#Create the uplods directory
+RUN mkdir -p uploads
+
 COPY . .
 
 EXPOSE 3000
