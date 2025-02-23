@@ -2,6 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const path = require('path');
 const { MONGODB_URL, PORT } = require('./config');
 
 const uploadDir = path.join(__dirname, 'uploads');
