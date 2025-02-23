@@ -30,17 +30,16 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage: storage, fileFilter: fileFilter });
 
-// Import controller functions
+// Import controller functions (note: runPipeline has been removed since it's undefined)
 const {
-  runPipeline,
   processDataset,
   nifiCallback,
   getPipelineStatus,
   createPipelineDefinition
 } = require('../controllers/mlPipelineController');
 
-// Endpoint to start a pipeline run (if needed)
-router.post('/run', runPipeline);
+// Remove or comment out the undefined route:
+// router.post('/run', runPipeline);
 
 // Endpoint to process dataset (simulate ingestion and analysis)
 router.post('/process/:pipelineId', processDataset);
