@@ -1,5 +1,5 @@
 // src/views/Deployment.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Container, Typography, Paper, Button, Stack, Box } from '@mui/material';
 import Grid2 from '@mui/material/Grid2';
 import { useParams } from 'react-router-dom';
@@ -11,29 +11,18 @@ import {
 } from '../api/apiService';
 
 const Deployment = () => {
-  const { pipelineId } = useParams(); // Suppose we navigate here with /deployment/:pipelineId
+  const { pipelineId } = useParams(); // may be undefined if route is /deployment with no ID
   const [logs, setLogs] = useState([]);
 
-  // Utility to add a timestamped log entry
   const addLog = (msg) => {
     setLogs((prev) => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
   };
 
-  // If no pipelineId is provided in the URL, show a placeholder
-  if (!pipelineId) {
-    return (
-      <Container sx={{ mt: 4, mb: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Deployment & Orchestration
-        </Typography>
-        <Typography variant="body1">
-          No pipeline selected. Please go to the Dashboard and click &quot;Deploy&quot; on a pipeline.
-        </Typography>
-      </Container>
-    );
-  }
-
   const handleStartNifi = async () => {
+    if (!pipelineId) {
+      addLog('No pipeline selected. Cannot start NiFi flow.');
+      return;
+    }
     try {
       await startNifiFlow(pipelineId);
       addLog('NiFi flow started.');
@@ -43,6 +32,10 @@ const Deployment = () => {
   };
 
   const handleStopNifi = async () => {
+    if (!pipelineId) {
+      addLog('No pipeline selected. Cannot stop NiFi flow.');
+      return;
+    }
     try {
       await stopNifiFlow(pipelineId);
       addLog('NiFi flow stopped.');
@@ -52,6 +45,10 @@ const Deployment = () => {
   };
 
   const handleTrainModel = async () => {
+    if (!pipelineId) {
+      addLog('No pipeline selected. Cannot train model.');
+      return;
+    }
     try {
       await trainSparkModel(pipelineId);
       addLog('Spark model training started.');
@@ -61,6 +58,10 @@ const Deployment = () => {
   };
 
   const handleRetrainModel = async () => {
+    if (!pipelineId) {
+      addLog('No pipeline selected. Cannot retrain model.');
+      return;
+    }
     try {
       await retrainSparkModel(pipelineId);
       addLog('Spark model retraining started.');
@@ -68,14 +69,13 @@ const Deployment = () => {
       addLog(`Error retraining Spark model: ${error.message}`);
     }
   };
-
   return (
     <Container sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
         Deployment & Orchestration
       </Typography>
       <Typography variant="body1" gutterBottom>
-        Pipeline ID: {pipelineId}
+        Pipeline ID: {pipelineId || 'No pipeline selected'}
       </Typography>
 
       <Grid2 container spacing={3}>
