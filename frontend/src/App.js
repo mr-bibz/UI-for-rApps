@@ -23,6 +23,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/create-pipeline" element={<CreatePipeline />} />
+            <Route path="/deployment" element={<Deployment />} />
             <Route path="/deployment/:pipelineId" element={<Deployment />} />
             <Route path="/monitoring" element={<Monitoring />} />
             <Route path="/validation/:pipelineId" element={<Validation />} />

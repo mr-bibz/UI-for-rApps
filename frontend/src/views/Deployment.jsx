@@ -14,16 +14,31 @@ const Deployment = () => {
   const { pipelineId } = useParams(); // Suppose we navigate here with /deployment/:pipelineId
   const [logs, setLogs] = useState([]);
 
+  // Utility to add a timestamped log entry
   const addLog = (msg) => {
-    setLogs((prev) => [...prev, '${new Date().toLocaleTimeString()}: ${msg}']);
+    setLogs((prev) => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
   };
+
+  // If no pipelineId is provided in the URL, show a placeholder
+  if (!pipelineId) {
+    return (
+      <Container sx={{ mt: 4, mb: 4 }}>
+        <Typography variant="h4" gutterBottom>
+          Deployment & Orchestration
+        </Typography>
+        <Typography variant="body1">
+          No pipeline selected. Please go to the Dashboard and click &quot;Deploy&quot; on a pipeline.
+        </Typography>
+      </Container>
+    );
+  }
 
   const handleStartNifi = async () => {
     try {
       await startNifiFlow(pipelineId);
       addLog('NiFi flow started.');
     } catch (error) {
-      addLog('Error starting NiFi flow: ${error.message}');
+      addLog(`Error starting NiFi flow: ${error.message}`);
     }
   };
 
@@ -32,7 +47,7 @@ const Deployment = () => {
       await stopNifiFlow(pipelineId);
       addLog('NiFi flow stopped.');
     } catch (error) {
-      addLog('Error stopping NiFi flow: ${error.message}');
+      addLog(`Error stopping NiFi flow: ${error.message}`);
     }
   };
 
@@ -41,7 +56,7 @@ const Deployment = () => {
       await trainSparkModel(pipelineId);
       addLog('Spark model training started.');
     } catch (error) {
-      addLog('Error training Spark model: ${error.message}');
+      addLog(`Error training Spark model: ${error.message}`);
     }
   };
 
@@ -50,7 +65,7 @@ const Deployment = () => {
       await retrainSparkModel(pipelineId);
       addLog('Spark model retraining started.');
     } catch (error) {
-      addLog('Error retraining Spark model: ${error.message}');
+      addLog(`Error retraining Spark model: ${error.message}`);
     }
   };
 
