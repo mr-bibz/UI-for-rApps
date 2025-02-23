@@ -11,8 +11,24 @@ import {
 } from '../api/apiService';
 
 const Deployment = () => {
-  const { pipelineId } = useParams(); // may be undefined if route is /deployment with no ID
+  const { pipelineId: paramId} = useParams(); // may be undefined if route is /deployment with no ID
+  const [pipelineId, setPipelineId] = useState(null);
   const [logs, setLogs] = useState([]);
+  
+  // On mount or when paramId changes, determine the actual pipeline ID to use.
+  useEffect(() => {
+    if (paramId) {
+      // If we have an ID in the URL, store it in localStorage and in state.
+      setPipelineId(paramId);
+      localStorage.setItem('selectedPipelineId', paramId);
+    } else {
+      // No param in the URL, try to read from localStorage.
+      const storedId = localStorage.getItem('selectedPipelineId');
+      if (storedId) {
+        setPipelineId(storedId);
+      }
+    }
+  }, [paramId]);
 
   const addLog = (msg) => {
     setLogs((prev) => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);

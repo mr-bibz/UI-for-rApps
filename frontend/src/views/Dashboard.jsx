@@ -41,6 +41,7 @@ const Dashboard = () => {
 
   // Navigate to the deployment page for a specific pipeline
   const handleView = (pipelineId) => {
+    localStorage.setItem('selectedPipelineId', pipelineId);
     navigate(`/deployment/${pipelineId}`);
   };
 
