@@ -34,6 +34,12 @@ app.use('/api/deployment', deploymentRoutes);
 app.use('/api/metrics/aggregated', aggregatedMetricsRoutes);
 app.use('/api/interpretability', interpretabilityRoutes);
 
+// Global Error Handler (optional)
+app.use((err, req, res, next) => {
+  console.error('[Global Error Handler]', err);
+  res.status(500).json({ error: err.message || 'Internal Server Error' });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`[Backend] Server running on port ${PORT}`);

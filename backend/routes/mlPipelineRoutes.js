@@ -1,3 +1,4 @@
+// routes/mlPipelineRoutes.js
 const express = require('express');
 const multer = require('multer');
 const router = express.Router();
@@ -13,26 +14,26 @@ const storage = multer.diskStorage({
   }
 });
 
-// Define a file filter to allow only CSV and PDF files.
-// Allow common CSV MIME types: "text/csv", "application/vnd.ms-excel", "text/plain"
+// Define a file filter to allow only CSV files
 const fileFilter = (req, file, cb) => {
   const allowedMIMEs = [
     'text/csv',
-    'application/pdf',
     'application/vnd.ms-excel',
     'text/plain'
   ];
   if (allowedMIMEs.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Unsupported file type. Only CSV and PDF files are allowed.'), false);
+    cb(new Error('Unsupported file type. Only CSV files are allowed.'), false);
   }
 };
 
 const upload = multer({ storage: storage, fileFilter: fileFilter });
 
+// Import controller functions
 const {
   runPipeline,
+  processDataset,
   nifiCallback,
   getPipelineStatus,
   createPipelineDefinition
@@ -40,6 +41,9 @@ const {
 
 // Endpoint to start a pipeline run (if needed)
 router.post('/run', runPipeline);
+
+// Endpoint to process dataset (simulate ingestion and analysis)
+router.post('/process/:pipelineId', processDataset);
 
 // Endpoint for NiFi callback (triggers Spark job, etc.)
 router.post('/nifi/callback', nifiCallback);
