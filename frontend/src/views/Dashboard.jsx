@@ -51,7 +51,7 @@ const Dashboard = () => {
   return (
     <Container sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
-        ML Pipelines Dashboard
+        RAN Telemetry Pipelines Dashboard
       </Typography>
       
       {/* Button to navigate to Create Pipeline Page */}
@@ -70,7 +70,7 @@ const Dashboard = () => {
           <TableHead>
             <TableRow>
               <TableCell>Name</TableCell>
-              <TableCell>Template</TableCell>
+              <TableCell>Dataset</TableCell>
               <TableCell>Created At</TableCell>
               <TableCell>Last Run</TableCell>
               <TableCell>Status</TableCell>
@@ -82,7 +82,7 @@ const Dashboard = () => {
               pipelines.map((pipeline) => (
                 <TableRow key={pipeline._id}>
                   <TableCell>{pipeline.name}</TableCell>
-                  <TableCell>{pipeline.template}</TableCell>
+                  <TableCell>{pipeline.dataset}</TableCell>
                   <TableCell>{new Date(pipeline.createdAt).toLocaleString()}</TableCell>
                   <TableCell>
                     {pipeline.lastRun ? new Date(pipeline.lastRun).toLocaleString() : 'N/A'}

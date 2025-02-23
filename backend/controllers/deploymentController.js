@@ -1,10 +1,10 @@
-const axios = require('axios');
-const { NIFI_BASE_URL } = require('../config');
+const { exec } = require('child_process');
+const { SPARK_MASTER } = require('../config');
 const PipelineDefinition = require('../models/PipelineDefinition');
 
 /**
- * Start NiFi flow for a given pipeline using the real NiFi REST API.
- * This function no longer skips dummy IDs.
+ * Start NiFi flow for a given pipeline in dummy mode.
+ * Instead of calling the real NiFi API, we simulate the start by updating the pipeline status.
  * Example route: POST /deployment/:pipelineId/start-processing
  */
 exports.startProcessing = async (req, res) => {
@@ -15,14 +15,13 @@ exports.startProcessing = async (req, res) => {
       return res.status(404).json({ error: 'Pipeline not found' });
     }
 
-    // Construct the URL to update the state of the process group to RUNNING.
-    // For example: http://localhost:8080/nifi-api/flow/process-groups/<nifiFlow>/state
-    const url = `${NIFI_BASE_URL}/flow/process-groups/${pipeline.nifiFlow}/state`;
-    const payload = { state: 'RUNNING' };
-
-    console.log(`[NiFi] Sending request to start process group ${pipeline.nifiFlow} using URL ${url}`);
-    const response = await axios.put(url, payload);
-    console.log('[NiFi] Response:', response.data);
+    if (pipeline.nifiFlow.startsWith('dummy-')) {
+      console.log(`[NiFi] Detected dummy flow ${pipeline.nifiFlow}. Simulating start processing...`);
+      // Simulate a delay to mimic API call latency
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } else {
+      // (Optional) Code for real NiFi call would go here.
+    }
 
     // Update pipeline status in MongoDB
     pipeline.status = 'processing';
@@ -31,8 +30,8 @@ exports.startProcessing = async (req, res) => {
 
     res.json({
       success: true,
-      message: `NiFi flow ${pipeline.nifiFlow} started.`,
-      nifiResponse: response.data
+      message: `Dummy NiFi flow ${pipeline.nifiFlow} started.`,
+      nifiResponse: { simulated: true }
     });
   } catch (error) {
     console.error('Error starting NiFi flow:', error.message);
@@ -41,7 +40,7 @@ exports.startProcessing = async (req, res) => {
 };
 
 /**
- * Stop NiFi flow for a given pipeline using the real NiFi REST API.
+ * Stop NiFi flow for a given pipeline in dummy mode.
  * Example route: POST /deployment/:pipelineId/stop-processing
  */
 exports.stopProcessing = async (req, res) => {
@@ -52,13 +51,12 @@ exports.stopProcessing = async (req, res) => {
       return res.status(404).json({ error: 'Pipeline not found' });
     }
 
-    // Construct the URL to update the state of the process group to STOPPED.
-    const url = `${NIFI_BASE_URL}/flow/process-groups/${pipeline.nifiFlow}/state`;
-    const payload = { state: 'STOPPED' };
-
-    console.log(`[NiFi] Sending request to stop process group ${pipeline.nifiFlow} using URL ${url}`);
-    const response = await axios.put(url, payload);
-    console.log('[NiFi] Response:', response.data);
+    if (pipeline.nifiFlow.startsWith('dummy-')) {
+      console.log(`[NiFi] Detected dummy flow ${pipeline.nifiFlow}. Simulating stop processing...`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } else {
+      // (Optional) Code for real NiFi call would go here.
+    }
 
     // Update pipeline status in MongoDB
     pipeline.status = 'stopped';
@@ -67,8 +65,8 @@ exports.stopProcessing = async (req, res) => {
 
     res.json({
       success: true,
-      message: `NiFi flow ${pipeline.nifiFlow} stopped.`,
-      nifiResponse: response.data
+      message: `Dummy NiFi flow ${pipeline.nifiFlow} stopped.`,
+      nifiResponse: { simulated: true }
     });
   } catch (error) {
     console.error('Error stopping NiFi flow:', error.message);
@@ -76,9 +74,8 @@ exports.stopProcessing = async (req, res) => {
   }
 };
 
-
 /**
- * Train a Spark model by exec'ing spark-submit in the spark-master container.
+ * Train a Spark model by executing spark-submit via docker exec.
  * Example route: POST /deployment/:pipelineId/train-model
  */
 exports.trainModel = async (req, res) => {
@@ -90,17 +87,15 @@ exports.trainModel = async (req, res) => {
     }
      
     const SparkSubmitPath = '/opt/bitnami/spark/bin/spark-submit';
-    // Where your training script is located inside spark-master:
-    // This path must match what you put in Dockerfile.sparkmaster.
+    // Path to your training script inside the spark-master container
     const sparkScript = '/opt/jobs/default-spark-job.py';
-
-    // The Spark Master URL (e.g. "spark://spark-master:7077")
-    // If not set in config, default here:
     const masterUrl = SPARK_MASTER || 'spark://spark-master:7077';
-
-    // You can pass pipelineId to your script if needed:
+    
+    // Construct the command (you can pass pipelineId if needed)
     const cmd = `docker exec spark-master ${SparkSubmitPath} --master ${masterUrl} ${sparkScript} --pipelineId ${pipelineId}`;
+
     console.log('[trainModel] Running command:', cmd);
+    
     exec(cmd, (error, stdout, stderr) => {
       if (error) {
         console.error('[trainModel] error:', error.message);
@@ -123,7 +118,7 @@ exports.trainModel = async (req, res) => {
 };
 
 /**
- * Retrain a Spark model by exec'ing spark-submit in the spark-master container.
+ * Retrain a Spark model by executing spark-submit via docker exec.
  * Example route: POST /deployment/:pipelineId/retrain-model
  */
 exports.retrainModel = async (req, res) => {
@@ -134,14 +129,13 @@ exports.retrainModel = async (req, res) => {
       return res.status(404).json({ error: 'Pipeline not found' });
     }
 
-    // If you have a separate script for retraining or pass a --retrain flag
-    // e.g. same script but different arg
     const SparkSubmitPath = '/opt/bitnami/spark/bin/spark-submit';
     const sparkScript = '/opt/jobs/default-spark-job.py';
     const masterUrl = SPARK_MASTER || 'spark://spark-master:7077';
 
     const cmd = `docker exec spark-master ${SparkSubmitPath} --master ${masterUrl} ${sparkScript} --retrain --pipelineId ${pipelineId}`;
     console.log('[retrainModel] Running command:', cmd);
+    
     exec(cmd, (error, stdout, stderr) => {
       if (error) {
         console.error('[retrainModel] error:', error.message);
@@ -160,4 +154,4 @@ exports.retrainModel = async (req, res) => {
     console.error('Error retraining Spark model:', error.message);
     res.status(500).json({ error: error.message });
   }
-};
+};s
