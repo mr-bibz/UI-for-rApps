@@ -154,4 +154,4 @@ exports.retrainModel = async (req, res) => {
     console.error('Error retraining Spark model:', error.message);
     res.status(500).json({ error: error.message });
   }
-};s
+};
