@@ -2,6 +2,13 @@
 const express = require('express');
 const multer = require('multer');
 const router = express.Router();
+const {
+  createPipelineDefinition,
+  processDataset,
+  nifiCallback,
+  getPipelineStatus
+} = require('../controllers/mlPipelineController');
+
 
 // Configure storage: Files will be saved in the "uploads" folder at the backend root.
 const storage = multer.diskStorage({
@@ -53,6 +60,8 @@ router.get('/status/:pipelineId', getPipelineStatus);
 // Create a new pipeline definition (with file upload for dataset)
 // This endpoint expects a multipart/form-data request with a 'dataset' file field.
 router.post('/create', upload.single('dataset'), createPipelineDefinition);
+
+router.post('/process/:pipelineId', processDataset);
 
 // GET all pipeline definitions (for listing in Dashboard)
 router.get('/', async (req, res) => {

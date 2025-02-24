@@ -83,9 +83,9 @@ async function analyzeOpenRan5G(filePath) {
         let bottleneckCount = 0;
 
         for (let i = 0; i < rows.length - 1; i++) {
-          const start = rows[i];
-          const end = rows[i + 1];
-          const deltaT = (end.ts - start.ts) / 1000; // in seconds
+          let start = rows[i];
+          let end = rows[i + 1];
+          let deltaT = (end.ts - start.ts) / 1000; // in seconds
           if (deltaT <= 0) continue; // skip if no forward progress in time
 
           // If tbs_sum is in bits, this is directly bits/sec. 
@@ -94,18 +94,18 @@ async function analyzeOpenRan5G(filePath) {
           if (deltaTbs < 0) deltaTbs = 0; // no negative
 
           // throughput in bits/sec -> convert to Mb/s
-          let throughputBps = deltaTbs / deltaT;
-          let throughputMbps = throughputBps / 1e6;
-
-          // Check if throughput is a "bottleneck" if > 100 Mbps
-          let isBottleneck = throughputMbps > 100;
-          if (isBottleneck) bottleneckCount++;
+          let throughputMps = (deltaTbs / deltaT) / 1e6;
+         // let throughputMbps = throughputBps / 1e6
 
           // Track stats
           if (throughputMbps < minThroughput) minThroughput = throughputMbps;
           if (throughputMbps > maxThroughput) maxThroughput = throughputMbps;
           sumThroughput += throughputMbps;
           throughputCount++;
+
+            // Check if throughput is a "bottleneck" if > 100 Mbps
+            let isBottleneck = throughputMbps > 100;
+            if (isBottleneck) bottleneckCount++;
 
           // Approximate latency (dummy heuristic):
           // latency = 1 / (throughputMbps + 1)

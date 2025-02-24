@@ -9,6 +9,10 @@ const pipelineDefinitionSchema = new mongoose.Schema({
   kafkaTopic: { type: String, required: true },
   sparkJob: { type: String, required: true },
   status: { type: String, default: 'inactive' },
+  dataset: { type: String }, // Path to the uploaded CSV
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+  lastRun: { type: Date, default: null },
 
   // ADD this field for the TBS-based analysis results
   openRanAnalysis: {
