@@ -8,7 +8,7 @@ import {
   Button,
   Box
 } from '@mui/material';
-import { fetchPipelineStatus } from '../api/apiService';
+import { fetchMonitoringData } from '../api/apiService';
 
 const Monitoring = () => {
   const [pipelineId, setPipelineId] = useState('');
@@ -18,7 +18,7 @@ const Monitoring = () => {
   // Fetch monitoring data (analysis + training metrics) for a given pipelineId
   const handleFetchMonitoring = async () => {
     try {
-      const response = await fetchPipelineStatus(pipelineId);
+      const response = await fetchMonitoringData(pipelineId);
       setMonitorData(response.data);
       setError('');
     } catch (err) {
