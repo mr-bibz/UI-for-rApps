@@ -65,6 +65,11 @@ export const deleteMlPipeline = (pipelineId) => axios.delete(`${API_BASE_URL}/ml
 export const fetchLogs = () => axios.get(`${API_BASE_URL}/metrics/error-logs`);
 
 /**
+ * Fetch ML pipeline Logs
+ */
+export const fetchMonitoringData = (pipelineId) => axios.get(`${API_BASE_URL}/monitoring/${pipelineId}`);
+
+/**
  * Fetch AggregatedMetrics
  */
 export const fetchAggregatedMetrics = () => axios.get(`${API_BASE_URL}/metrics/aggregated`);

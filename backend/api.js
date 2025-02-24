@@ -20,6 +20,7 @@ const metricsRoutes = require('./routes/metricsRoutes');
 const deploymentRoutes = require('./routes/deploymentRoutes');
 const aggregatedMetricsRoutes = require('./routes/aggregatedMetricsRoutes');
 const interpretabilityRoutes = require('./routes/interpretabilityRoutes');
+const monitoringRoutes = require('./routes/monitoringRoutes');
 
 const app = express();
 app.use(cors());
@@ -41,6 +42,7 @@ app.use('/api/metrics', metricsRoutes);
 app.use('/api/deployment', deploymentRoutes);
 app.use('/api/metrics/aggregated', aggregatedMetricsRoutes);
 app.use('/api/interpretability', interpretabilityRoutes);
+app.use('/api/monitoring', monitoringRoutes);
 
 // Global Error Handler (optional)
 app.use((err, req, res, next) => {
