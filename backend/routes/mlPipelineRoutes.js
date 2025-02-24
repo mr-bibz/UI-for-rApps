@@ -1,7 +1,32 @@
 // routes/mlPipelineRoutes.js
 const express = require('express');
-const multer = require('multer');
 const router = express.Router();
+const multer = require('multer');
+
+// 1. Configure storage: where uploaded CSV files go.
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // Ensure 'uploads/' exists in your backend directory.
+  },
+  filename: (req, file, cb) => {
+    // Prepend a timestamp to keep filenames unique.
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+// 2. Optional file filter to allow only CSV
+const fileFilter = (req, file, cb) => {
+  const allowedMIMEs = ['text/csv', 'application/vnd.ms-excel', 'text/plain'];
+  if (allowedMIMEs.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only CSV files are allowed.'), false);
+  }
+};
+
+const upload = multer({ storage, fileFilter });
+
+// 3. Import the controller functions
 const {
   createPipelineDefinition,
   processDataset,
@@ -9,61 +34,21 @@ const {
   getPipelineStatus
 } = require('../controllers/mlPipelineController');
 
+// 4. Define routes
 
-// Configure storage: Files will be saved in the "uploads" folder at the backend root.
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');  // Ensure this folder exists in your backend directory.
-  },
-  filename: function (req, file, cb) {
-    // Prepend a timestamp to the original filename for uniqueness.
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
-
-// Define a file filter to allow only CSV files
-const fileFilter = (req, file, cb) => {
-  const allowedMIMEs = [
-    'text/csv',
-    'application/vnd.ms-excel',
-    'text/plain'
-  ];
-  if (allowedMIMEs.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Unsupported file type. Only CSV files are allowed.'), false);
-  }
-};
-
-const upload = multer({ storage: storage, fileFilter: fileFilter });
-
-// Import controller functions (note: runPipeline has been removed since it's undefined)
-const {
-  processDataset,
-  nifiCallback,
-  getPipelineStatus,
-  createPipelineDefinition
-} = require('../controllers/mlPipelineController');
-
-// Remove or comment out the undefined route:
-// router.post('/run', runPipeline);
-
-// Endpoint to process dataset (simulate ingestion and analysis)
-router.post('/process/:pipelineId', processDataset);
-
-// Endpoint for NiFi callback (triggers Spark job, etc.)
-router.post('/nifi/callback', nifiCallback);
-
-// Endpoint to check the run status of a pipeline
-router.get('/status/:pipelineId', getPipelineStatus);
-
-// Create a new pipeline definition (with file upload for dataset)
-// This endpoint expects a multipart/form-data request with a 'dataset' file field.
+// CREATE pipeline (upload CSV with columns "timestamp,tbs_sum")
 router.post('/create', upload.single('dataset'), createPipelineDefinition);
 
+// PROCESS dataset => analyze "timestamp,tbs_sum" to compute throughput & store in openRanAnalysis
 router.post('/process/:pipelineId', processDataset);
 
-// GET all pipeline definitions (for listing in Dashboard)
+// NIFI CALLBACK => triggers Spark training
+router.post('/nifi/callback', nifiCallback);
+
+// GET pipeline status => returns openRanAnalysis + trainingMetrics
+router.get('/status/:pipelineId', getPipelineStatus);
+
+// GET all pipeline definitions (for listing in a dashboard)
 router.get('/', async (req, res) => {
   try {
     const PipelineDefinition = require('../models/PipelineDefinition');
@@ -75,7 +60,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// DELETE a pipeline definition by its ID
+// DELETE a pipeline definition by ID
 router.delete('/:pipelineId', async (req, res) => {
   try {
     const PipelineDefinition = require('../models/PipelineDefinition');
