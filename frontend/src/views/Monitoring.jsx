@@ -8,17 +8,20 @@ import {
   Button,
   Box
 } from '@mui/material';
-import { fetchMonitoringData } from '../api/apiService';
+
+// If your API service has a dedicated function for monitoring, rename accordingly.
+// Otherwise, if you use /status from your pipeline controller, do something like:
+import { fetchPipelineStatus } from '../api/apiService';
 
 const Monitoring = () => {
   const [pipelineId, setPipelineId] = useState('');
   const [monitorData, setMonitorData] = useState(null);
   const [error, setError] = useState('');
 
-  // Fetch monitoring data (analysis + training metrics) for a given pipelineId
+  // Fetch pipeline status (which includes openRanAnalysis & trainingMetrics)
   const handleFetchMonitoring = async () => {
     try {
-      const response = await fetchMonitoringData(pipelineId);
+      const response = await fetchPipelineStatus(pipelineId);
       setMonitorData(response.data);
       setError('');
     } catch (err) {
@@ -26,7 +29,7 @@ const Monitoring = () => {
       setMonitorData(null);
     }
   };
- 
+
   return (
     <Container sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
@@ -55,31 +58,62 @@ const Monitoring = () => {
           </Typography>
           <Typography variant="body1">Status: {monitorData.status}</Typography>
 
-          {monitorData.analysis && (
+          {/* Show openRanAnalysis if present */}
+          {monitorData.openRanAnalysis && (
             <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle1">Dataset Analysis</Typography>
-              <Typography>Record Count: {monitorData.analysis.count}</Typography>
+              <Typography variant="subtitle1">OpenRAN TBS Analysis</Typography>
               <Typography>
-                Average Throughput: {monitorData.analysis.averageThroughput}
+                Total Records: {monitorData.openRanAnalysis.totalRecords}
               </Typography>
               <Typography>
-                Average Latency: {monitorData.analysis.averageLatency}
+                Total Load (tbs_sum): {monitorData.openRanAnalysis.totalLoad}
               </Typography>
               <Typography>
-                Min Throughput: {monitorData.analysis.minThroughput}
+                Avg Throughput (Mbps):{' '}
+                {monitorData.openRanAnalysis.avgThroughput?.toFixed(2)}
               </Typography>
               <Typography>
-                Max Throughput: {monitorData.analysis.maxThroughput}
+                Min Throughput (Mbps):{' '}
+                {monitorData.openRanAnalysis.minThroughput?.toFixed(2)}
               </Typography>
               <Typography>
-                Min Latency: {monitorData.analysis.minLatency}
+                Max Throughput (Mbps):{' '}
+                {monitorData.openRanAnalysis.maxThroughput?.toFixed(2)}
               </Typography>
               <Typography>
-                Max Latency: {monitorData.analysis.maxLatency}
+                Approx Latency (s):{' '}
+                {monitorData.openRanAnalysis.approxLatency?.toFixed(4)}
               </Typography>
+              <Typography>
+                Bottleneck Count: {monitorData.openRanAnalysis.bottleneckCount}
+              </Typography>
+
+              {/* If you want to display intervals */}
+              {monitorData.openRanAnalysis.intervals &&
+                monitorData.openRanAnalysis.intervals.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2">Intervals:</Typography>
+                    {monitorData.openRanAnalysis.intervals.map(
+                      (interval, idx) => (
+                        <Box key={idx} sx={{ ml: 2, mb: 1 }}>
+                          <Typography>
+                            {interval.timestampStart} → {interval.timestampEnd}{' '}
+                            (Δt: {interval.deltaT}s)
+                          </Typography>
+                          <Typography>
+                            Throughput: {interval.throughput.toFixed(2)} Mbps |{' '}
+                            Latency: {interval.latency.toFixed(4)}s |{' '}
+                            Bottleneck: {interval.bottleneck ? 'Yes' : 'No'}
+                          </Typography>
+                        </Box>
+                      )
+                    )}
+                  </Box>
+                )}
             </Box>
           )}
 
+          {/* Show training metrics if present */}
           {monitorData.trainingMetrics && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="subtitle1">Training Metrics</Typography>

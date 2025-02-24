@@ -10,27 +10,31 @@ const pipelineDefinitionSchema = new mongoose.Schema({
   sparkJob: { type: String, required: true },
   status: { type: String, default: 'inactive' },
 
-  // NEW: Store dataset analysis (throughput/latency metrics, row count, etc.)
-  analysis: {
-    count: Number,
-    averageThroughput: Number,
-    averageLatency: Number,
+  // ADD this field for the TBS-based analysis results
+  openRanAnalysis: {
+    totalRecords: Number,
+    totalLoad: Number,
+    avgThroughput: Number,
     minThroughput: Number,
     maxThroughput: Number,
-    minLatency: Number,
-    maxLatency: Number
+    approxLatency: Number,
+    bottleneckCount: Number,
+    intervals: [{
+      timestampStart: String,
+      timestampEnd: String,
+      deltaT: Number,
+      throughput: Number,
+      latency: Number,
+      bottleneck: Boolean
+    }]
   },
 
-  // NEW: Store ML training results (accuracy, artifact path, etc.)
+  // If you also do ML training, store training results here
   trainingMetrics: {
     accuracy: Number,
     artifactPath: String,
     updatedAt: Date
-  },
-
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-  lastRun: { type: Date, default: null }
+  }
 });
 
 module.exports = mongoose.model('PipelineDefinition', pipelineDefinitionSchema);

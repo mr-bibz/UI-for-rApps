@@ -8,13 +8,16 @@ const MLModel = require('../models/MLModel');
 const PipelineDefinition = require('../models/PipelineDefinition');
 const { getKafkaProducer } = require('../utils/kafka');
 
-// Dummy NiFi utility functions (they simulate NiFi behavior)
+// Dummy NiFi utility functions (simulate NiFi flow creation/clone)
 const {
   createMinimalKafkaNiFiTemplate,
   cloneNifiTemplate
 } = require('../utils/nifi');
 
-// Utility to run spark-submit commands (or docker exec commands)
+/**
+ * runCommand
+ * Utility to run a spark-submit command (or other shell commands).
+ */
 function runCommand(cmd) {
   return new Promise((resolve, reject) => {
     exec(cmd, (err, stdout, stderr) => {
@@ -24,72 +27,139 @@ function runCommand(cmd) {
   });
 }
 
-// (Optional) In-memory pipeline run state (not essential if we store everything in MongoDB)
+// In-memory pipeline run state (optional, not required if everything is in MongoDB)
 const pipelineRuns = {};
 
 /**
- * analyzeDataset
+ * analyzeOpenRan5G
  *
- * Reads the CSV file at filePath and computes simple metrics.
- * Assumes CSV columns: "throughput" and "latency".
- * Adjust as needed for your RAN telemetry data.
+ * This function reads a CSV file that has at least two columns:
+ *  - timestamp (string)
+ *  - tbs_sum (number)
+ *
+ * 1) Sorts rows by ascending timestamp.
+ * 2) For each consecutive pair of rows, computes an approximate throughput (Mbps).
+ * 3) Calculates total load (sum of tbs_sum), average throughput, min/max throughput, 
+ *    approximate latency, and bottleneck counts (if throughput > 100 Mbps).
+ *
+ * You can refine logic (e.g., if tbs_sum is in bytes, multiply by 8 for bits, etc.)
  */
-function analyzeDataset(filePath) {
+async function analyzeOpenRan5G(filePath) {
   return new Promise((resolve, reject) => {
-    let count = 0;
-    let totalThroughput = 0;
-    let totalLatency = 0;
-    let minThroughput = Infinity;
-    let maxThroughput = -Infinity;
-    let minLatency = Infinity;
-    let maxLatency = -Infinity;
+    let rows = [];
 
     fs.createReadStream(filePath)
       .pipe(csv())
       .on('data', (row) => {
-        count++;
-        const throughput = parseFloat(row.throughput) || 0;
-        const latency = parseFloat(row.latency) || 0;
-        totalThroughput += throughput;
-        totalLatency += latency;
-        if (throughput < minThroughput) minThroughput = throughput;
-        if (throughput > maxThroughput) maxThroughput = throughput;
-        if (latency < minLatency) minLatency = latency;
-        if (latency > maxLatency) maxLatency = latency;
+        // Attempt to parse timestamp and tbs_sum
+        const ts = new Date(row.timestamp).getTime(); // in ms
+        const tbsSum = parseFloat(row.tbs_sum) || 0;
+        if (!isNaN(ts)) {
+          rows.push({ ts, tbsSum });
+        }
       })
       .on('end', () => {
-        const averageThroughput = count > 0 ? totalThroughput / count : 0;
-        const averageLatency = count > 0 ? totalLatency / count : 0;
+        // Sort by timestamp
+        rows.sort((a, b) => a.ts - b.ts);
+
+        if (rows.length < 2) {
+          return resolve({
+            totalRecords: rows.length,
+            message: 'Not enough data points to compute throughput.'
+          });
+        }
+
+        let totalRecords = rows.length;
+        let totalLoad = 0; // sum of all tbs_sum across rows
+        rows.forEach(r => { totalLoad += r.tbsSum; });
+
+        // We'll compute throughput between consecutive timestamps
+        let intervals = [];
+        let sumThroughput = 0;
+        let throughputCount = 0;
+
+        let minThroughput = Infinity;
+        let maxThroughput = -Infinity;
+        let bottleneckCount = 0;
+
+        for (let i = 0; i < rows.length - 1; i++) {
+          const start = rows[i];
+          const end = rows[i + 1];
+          const deltaT = (end.ts - start.ts) / 1000; // in seconds
+          if (deltaT <= 0) continue; // skip if no forward progress in time
+
+          // If tbs_sum is in bits, this is directly bits/sec. 
+          // If in bytes, do something like: deltaTbs = (end.tbsSum - start.tbsSum) * 8;
+          let deltaTbs = end.tbsSum - start.tbsSum;
+          if (deltaTbs < 0) deltaTbs = 0; // no negative
+
+          // throughput in bits/sec -> convert to Mb/s
+          let throughputBps = deltaTbs / deltaT;
+          let throughputMbps = throughputBps / 1e6;
+
+          // Check if throughput is a "bottleneck" if > 100 Mbps
+          let isBottleneck = throughputMbps > 100;
+          if (isBottleneck) bottleneckCount++;
+
+          // Track stats
+          if (throughputMbps < minThroughput) minThroughput = throughputMbps;
+          if (throughputMbps > maxThroughput) maxThroughput = throughputMbps;
+          sumThroughput += throughputMbps;
+          throughputCount++;
+
+          // Approximate latency (dummy heuristic):
+          // latency = 1 / (throughputMbps + 1)
+          let latency = 1 / (throughputMbps + 1);
+
+          intervals.push({
+            timestampStart: new Date(start.ts).toISOString(),
+            timestampEnd: new Date(end.ts).toISOString(),
+            deltaT,
+            throughput: throughputMbps,
+            latency,
+            bottleneck: isBottleneck
+          });
+        }
+
+        let avgThroughput = throughputCount > 0
+          ? sumThroughput / throughputCount
+          : 0;
+
+        if (minThroughput === Infinity) minThroughput = 0;
+        if (maxThroughput === -Infinity) maxThroughput = 0;
+
+        // Approx overall latency (dummy)
+        let approxLatency = 1 / (avgThroughput + 1);
+
         resolve({
-          count,
-          averageThroughput,
-          averageLatency,
-          minThroughput: isFinite(minThroughput) ? minThroughput : 0,
-          maxThroughput: isFinite(maxThroughput) ? maxThroughput : 0,
-          minLatency: isFinite(minLatency) ? minLatency : 0,
-          maxLatency: isFinite(maxLatency) ? maxLatency : 0
+          totalRecords,
+          totalLoad,
+          avgThroughput,
+          minThroughput,
+          maxThroughput,
+          approxLatency,
+          bottleneckCount,
+          intervals
         });
       })
-      .on('error', (err) => {
-        reject(err);
-      });
+      .on('error', reject);
   });
 }
 
-
 /**
- * Create a new pipeline definition.
+ * createPipelineDefinition
  * Expects:
- *  - Pipeline name in req.body.name
- *  - An imported dataset file via req.file
- * Uses dummy NiFi logic to generate a NiFi flow ID.
+ *  - pipeline name in req.body.name
+ *  - a dataset CSV (with columns timestamp, tbs_sum) in req.file
+ * 
+ * Uses dummy NiFi logic to create a NiFi flow ID, then saves a pipeline doc.
  */
 exports.createPipelineDefinition = async (req, res) => {
   try {
     console.log('[createPipelineDefinition] req.body:', req.body);
     
     const { name } = req.body;
-    const datasetFile = req.file; // populated by multer in routes
+    const datasetFile = req.file; // from multer
     if (!name || !datasetFile) {
       return res.status(400).json({ error: 'Pipeline name and dataset file are required.' });
     }
@@ -97,26 +167,24 @@ exports.createPipelineDefinition = async (req, res) => {
     const datasetPath = datasetFile.path || datasetFile.filename;
     console.log(`Creating pipeline "${name}" with dataset "${datasetPath}"`);
 
-    // Dummy NiFi logic: create a minimal template, clone it => dummy NiFi flow ID
+    // Dummy NiFi creation
     const dummyTemplateId = await createMinimalKafkaNiFiTemplate('dummy');
     console.log(`Created dummy NiFi template: ${dummyTemplateId}`);
 
     const dummyNifiFlow = await cloneNifiTemplate(dummyTemplateId);
     console.log(`[MLPipeline] Dummy NiFi flow ID obtained: ${dummyNifiFlow}`);
-
-     // Build pipeline doc with dataset reference & dummy NiFi flow
-     const pipelineData = {
+    const pipelineData = {
       name,
       dataset: datasetPath,
       nifiFlow: dummyNifiFlow,
       kafkaTopic: `dummy-topic-${Date.now()}`,
-      sparkJob: `dummy-spark-job`,
+      sparkJob: 'dummy-spark-job',
       status: 'inactive',
       createdAt: new Date(),
       updatedAt: new Date(),
       lastRun: null
     };
-    
+
     const newPipeline = new PipelineDefinition(pipelineData);
     const savedPipeline = await newPipeline.save();
     
@@ -129,7 +197,8 @@ exports.createPipelineDefinition = async (req, res) => {
 };
 
 /**
- * Process Dataset: simulate NiFi ingestion + dataset analysis.
+ * processDataset
+ * Simulate NiFi ingestion & analyze the TBS dataset (timestamp, tbs_sum).
  * POST /api/pipelines/:pipelineId/process
  */
 exports.processDataset = async (req, res) => {
@@ -137,80 +206,80 @@ exports.processDataset = async (req, res) => {
   if (!pipelineId) {
     return res.status(400).json({ error: 'pipelineId is required.' });
   }
-  
+
   try {
     const pipeline = await PipelineDefinition.findById(pipelineId);
     if (!pipeline) {
       return res.status(404).json({ error: 'Pipeline not found.' });
     }
-    
-    console.log(`[processDataset] Processing dataset for pipeline ${pipelineId}, NiFi flow: ${pipeline.nifiFlow}`);
 
-    // Analyze the dataset => compute throughput/latency metrics
-    const analysisMetrics = await analyzeDataset(pipeline.dataset);
-    console.log('[processDataset] Dataset analysis results:', analysisMetrics);
+    console.log(`[processDataset] TBS dataset for pipeline ${pipelineId}, NiFi flow: ${pipeline.nifiFlow}`);
 
-    // Simulate NiFi ingestion via Kafka
+    // 1) Analyze TBS dataset
+    const openRanAnalysis = await analyzeOpenRan5G(pipeline.dataset);
+    console.log('[processDataset] openRanAnalysis:', openRanAnalysis);
+
+    // 2) Store in pipeline doc
+    pipeline.openRanAnalysis = openRanAnalysis;
+    pipeline.status = 'processing';
+    pipeline.updatedAt = new Date();
+    await pipeline.save();
+
+    // 3) (Optional) produce Kafka message
     const producer = await getKafkaProducer();
     await producer.send({
       topic: pipeline.kafkaTopic,
-      messages: [{ value: `Processing dataset ${pipeline.dataset}: ${JSON.stringify(analysisMetrics)}` }]
+      messages: [{ value: `Processed TBS dataset: ${JSON.stringify(openRanAnalysis)}` }]
     });
-    console.log(`[Kafka] Message produced to topic ${pipeline.kafkaTopic}`);
-    
-     // Persist analysis in the pipeline doc
-     pipeline.analysis = analysisMetrics; 
-     pipeline.status = 'processing';
-     pipeline.updatedAt = new Date();
-     await pipeline.save();
- 
-     // (Optional) Also update in-memory run state
-     pipelineRuns[pipelineId] = {
-       nifiFlow: pipeline.nifiFlow,
-       kafkaTopic: pipeline.kafkaTopic,
-       dataset: pipeline.dataset,
-       analysis: analysisMetrics,
-       status: 'Dataset processing complete'
-     };
-     
-     res.json({
-       success: true,
-       message: 'Dataset processing initiated (dummy NiFi).',
-       pipelineId,
-       analysis: analysisMetrics
-     });
-   } catch (error) {
-     console.error('[processDataset] error:', error.message);
-     res.status(500).json({ error: error.message });
-   }
- };
+    console.log(`[Kafka] Message produced to ${pipeline.kafkaTopic}`);
 
- /**
- * NiFi Callback: triggered when dataset processing is complete (dummy).
+    // 4) Also store ephemeral in pipelineRuns if desired
+    pipelineRuns[pipelineId] = {
+      nifiFlow: pipeline.nifiFlow,
+      kafkaTopic: pipeline.kafkaTopic,
+      dataset: pipeline.dataset,
+      openRanAnalysis,
+      status: 'Dataset processing complete'
+    };
+
+    res.json({
+      success: true,
+      message: 'OpenRAN TBS dataset processed (dummy NiFi).',
+      pipelineId,
+      openRanAnalysis
+    });
+  } catch (error) {
+    console.error('[processDataset] error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * nifiCallback
  * POST /api/pipelines/nifi-callback
- * => Runs a Spark job for training, stores training metrics in the pipeline doc.
+ * => Trigger Spark job to train a model & store training metrics
  */
 exports.nifiCallback = async (req, res) => {
   const { pipelineId } = req.body;
   if (!pipelineId) {
     return res.status(400).json({ error: 'pipelineId is required in callback.' });
   }
-  
+
   const run = pipelineRuns[pipelineId];
   if (!run) {
     return res.status(404).json({ error: 'No pipeline run found for that pipelineId.' });
   }
-  
+
   try {
     run.status = 'Dataset processing complete';
-    console.log(`[nifiCallback] Pipeline ${pipelineId} dummy processing complete.`);
+    console.log(`[nifiCallback] Pipeline ${pipelineId} => ready for Spark training.`);
 
-    // Trigger Spark training job
+    // 1) Trigger Spark job, pass the dataset path
     const sparkCmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/train_model.py --dataset ${run.dataset}`;
     const sparkResult = await runCommand(sparkCmd);
     console.log('[Spark] Training logs:', sparkResult.stdout);
-    
-    // Simulate storing the trained ML model
+
+    // 2) Simulate storing trained model info
     const accuracy = 0.95;
     const artifactPath = `/usr/src/app/models/model_${pipelineId}`;
     const newModel = await MLModel.create({
@@ -221,9 +290,9 @@ exports.nifiCallback = async (req, res) => {
     });
     run.status = 'Spark training complete';
     run.modelId = newModel._id;
-    console.log('[nifiCallback] Model stored with id:', newModel._id);
+    console.log('[nifiCallback] Model stored =>', newModel._id);
 
-    // ALSO store training metrics in the pipeline doc
+    // 3) Also persist training metrics in the pipeline doc
     const pipeline = await PipelineDefinition.findById(pipelineId);
     if (pipeline) {
       pipeline.status = 'trained';
@@ -235,7 +304,7 @@ exports.nifiCallback = async (req, res) => {
       };
       await pipeline.save();
     }
-    
+
     res.json({
       success: true,
       pipelineId,
@@ -249,27 +318,26 @@ exports.nifiCallback = async (req, res) => {
 };
 
 /**
- * Retrieve the status of a pipeline from MongoDB (not just in-memory).
+ * getPipelineStatus
  * GET /api/pipelines/:pipelineId/status
+ * => Returns the pipeline doc, including openRanAnalysis & trainingMetrics
  */
 exports.getPipelineStatus = async (req, res) => {
   const { pipelineId } = req.params;
   if (!pipelineId) {
     return res.status(400).json({ error: 'pipelineId is required.' });
   }
-  
+
   try {
-    // Find pipeline doc in MongoDB
     const pipeline = await PipelineDefinition.findById(pipelineId);
     if (!pipeline) {
       return res.status(404).json({ error: 'No pipeline found for that ID.' });
     }
 
-    // Return relevant fields, including analysis and trainingMetrics
     res.json({
       pipelineId,
       status: pipeline.status,
-      analysis: pipeline.analysis || null,
+      openRanAnalysis: pipeline.openRanAnalysis || null,
       trainingMetrics: pipeline.trainingMetrics || null
     });
   } catch (error) {
