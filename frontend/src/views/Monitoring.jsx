@@ -11,7 +11,7 @@ import {
 
 // If your API service has a dedicated function for monitoring, rename accordingly.
 // Otherwise, if you use /status from your pipeline controller, do something like:
-import { fetchPipelineStatus } from '../api/apiService';
+import { fetchMonitoringData } from '../api/apiService';
 
 const Monitoring = () => {
   const [pipelineId, setPipelineId] = useState('');
@@ -21,7 +21,7 @@ const Monitoring = () => {
   // Fetch pipeline status (which includes openRanAnalysis & trainingMetrics)
   const handleFetchMonitoring = async () => {
     try {
-      const response = await fetchPipelineStatus(pipelineId);
+      const response = await fetchMonitoringData(pipelineId);
       setMonitorData(response.data);
       setError('');
     } catch (err) {
