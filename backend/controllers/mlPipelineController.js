@@ -8,11 +8,6 @@ const MLModel = require('../models/MLModel');
 const PipelineDefinition = require('../models/PipelineDefinition');
 const { getKafkaProducer } = require('../utils/kafka');
 
-const producer = await getKafkaProducer();
-await producer.send({
-  topic: pipeline.kafkaTopic,
-  messages: [{ value: 'Some message' }]
-});
 
 // Dummy NiFi utility functions (simulate NiFi flow creation/clone)
 const {
