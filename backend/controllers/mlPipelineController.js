@@ -46,18 +46,24 @@ const pipelineRuns = {};
  *
  * You can refine logic (e.g., if tbs_sum is in bytes, multiply by 8 for bits, etc.)
  */
+
 async function analyzeOpenRan5G(filePath) {
   return new Promise((resolve, reject) => {
-    let rows = [];
+    const rows = [];
 
     fs.createReadStream(filePath)
-      .pipe(csv())
+      .pipe(csv({ separator: '\t' })) // <-- Use tab as delimiter, if your data is tab-delimited
       .on('data', (row) => {
-        // Attempt to parse timestamp and tbs_sum
-        const ts = new Date(row.timestamp).getTime(); // in ms
-        const tbsSum = parseFloat(row.tbs_sum) || 0;
-        if (!isNaN(ts)) {
-          rows.push({ ts, tbsSum });
+        const rawTs = (row.timestamp || "").trim();
+        let tsInt = parseInt(rawTs, 10);
+
+        // If it's a 10-digit number, assume Unix timestamp in seconds -> convert to ms
+        if (!isNaN(tsInt)) {
+          if (rawTs.length === 10) {
+            tsInt = tsInt * 1000; 
+          }
+          const tbsSum = parseFloat(row.tbs_sum) || 0;
+          rows.push({ ts: tsInt, tbsSum });
         }
       })
       .on('end', () => {
@@ -71,12 +77,11 @@ async function analyzeOpenRan5G(filePath) {
           });
         }
 
-        let totalRecords = rows.length;
-        let totalLoad = 0; // sum of all tbs_sum across rows
-        rows.forEach(r => { totalLoad += r.tbsSum; });
+        const totalRecords = rows.length;
+        const totalLoad = rows.reduce((acc, r) => acc + r.tbsSum, 0);
 
         // We'll compute throughput between consecutive timestamps
-        let intervals = [];
+        const intervals = [];
         let sumThroughput = 0;
         let throughputCount = 0;
 
@@ -85,33 +90,35 @@ async function analyzeOpenRan5G(filePath) {
         let bottleneckCount = 0;
 
         for (let i = 0; i < rows.length - 1; i++) {
-          let start = rows[i];
-          let end = rows[i + 1];
-          let deltaT = (end.ts - start.ts) / 1000; // in seconds
-          if (deltaT <= 0) continue; // skip if no forward progress in time
+          const start = rows[i];
+          const end = rows[i + 1];
+          const deltaT = (end.ts - start.ts) / 1000; // seconds
+          if (deltaT <= 0) continue;
 
-          // If tbs_sum is in bits, this is directly bits/sec. 
-          // If in bytes, do something like: deltaTbs = (end.tbsSum - start.tbsSum) * 8;
+          // Because tbsSum is in bits, deltaTbs is in bits
           let deltaTbs = end.tbsSum - start.tbsSum;
-          if (deltaTbs < 0) deltaTbs = 0; // no negative
+          if (deltaTbs < 0) deltaTbs = 0; // ignore negative
 
-          // throughput in bits/sec -> convert to Mb/s
-          let throughputMps = (deltaTbs / deltaT) / 1e6;
-         // let throughputMbps = throughputBps / 1e6
+          // bits per second
+          const throughputBps = deltaTbs / deltaT;
+          // convert to Mb/s
+          const throughputMbps = throughputBps / 1e6;
 
-          // Track stats
+          // Update min/max
           if (throughputMbps < minThroughput) minThroughput = throughputMbps;
           if (throughputMbps > maxThroughput) maxThroughput = throughputMbps;
+
+          // Sum for average
           sumThroughput += throughputMbps;
           throughputCount++;
 
-            // Check if throughput is a "bottleneck" if > 100 Mbps
-            let isBottleneck = throughputMbps > 100;
-            if (isBottleneck) bottleneckCount++;
+          // Check if throughput is a "bottleneck" if > 100 Mbps 
+          // (or whichever logic you prefer)
+          const isBottleneck = (throughputMbps > 100);
+          if (isBottleneck) bottleneckCount++;
 
-          // Approximate latency (dummy heuristic):
-          // latency = 1 / (throughputMbps + 1)
-          let latency = 1 / (throughputMbps + 1);
+          // Dummy latency heuristic:
+          const latency = 1 / (throughputMbps + 1);
 
           intervals.push({
             timestampStart: new Date(start.ts).toISOString(),
@@ -131,7 +138,7 @@ async function analyzeOpenRan5G(filePath) {
         if (maxThroughput === -Infinity) maxThroughput = 0;
 
         // Approx overall latency (dummy)
-        let approxLatency = 1 / (avgThroughput + 1);
+        const approxLatency = 1 / (avgThroughput + 1);
 
         resolve({
           totalRecords,
@@ -144,7 +151,9 @@ async function analyzeOpenRan5G(filePath) {
           intervals
         });
       })
-      .on('error', reject);
+      .on('error', (err) => {
+        reject(err);
+      });
   });
 }
 
