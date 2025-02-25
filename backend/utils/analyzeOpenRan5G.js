@@ -1,49 +1,41 @@
-// utils/analyzeOpenRan5G.js
-
 const fs = require('fs');
 const csv = require('csv-parser');
 
-/**
- * analyzeOpenRan5G(filePath)
- *
- * Reads a tab-delimited CSV file with exactly two columns:
- *   - timestamp: a Unix timestamp in seconds (10 digits)
- *   - tbs_sum: numeric value representing the total transport block size sum
- *
- * The function:
- *   1. Parses each row, converting the timestamp from seconds to milliseconds.
- *   2. Sorts all rows by ascending timestamp.
- *   3. For each consecutive pair of rows, calculates:
- *         - deltaT: the time difference (in seconds)
- *         - deltaTbs: the difference in tbs_sum
- *         - throughput in bits per second, then converts it to Mb/s.
- *         - a dummy latency as 1/(throughput + 1)
- *         - whether the interval is a “bottleneck” if throughput > 100 Mb/s.
- *   4. Computes overall metrics such as total records, total load (sum of tbs_sum),
- *      average throughput, min/max throughput, overall approximate latency, and bottleneck count.
- *   5. Returns an object containing these computed metrics along with an array of intervals.
- *
- * @param {string} filePath - The absolute path to the CSV file.
- * @returns {Promise<Object>} - A promise that resolves with the analysis results.
- */
-async function analyzeOpenRan5G(filePath) {
+function analyzeOpenRan5G(filePath) {
   return new Promise((resolve, reject) => {
-    let rows = [];
+    const rows = [];
+
+    // Optional: Preview the file content
+    fs.readFile(filePath, 'utf8', (err, data) => {
+      if (err) {
+        console.error('Error reading file preview:', err);
+      } else {
+        console.log('File content preview:', data.slice(0, 200));
+      }
+    });
 
     fs.createReadStream(filePath)
-      .pipe(csv({ separator: "\t" })) // using tab as delimiter
+      // Remove the tab separator option so the file is parsed as comma-separated.
+      .pipe(csv())
       .on('data', (row) => {
-        const rawTs = row.timestamp;              // e.g. "1589650273"
-        const tsInt = parseInt(rawTs, 10);
-        // If the timestamp is exactly 10 characters, assume it's in seconds and convert to ms.
-        const ts = (rawTs && rawTs.length === 10) ? tsInt * 1000 : tsInt;
-        const tbsSum = parseFloat(row.tbs_sum) || 0;
-        if (!isNaN(ts)) {
-          rows.push({ ts, tbsSum });
+        // Debug: Log each parsed row
+        console.log("Parsed row:", row);
+        
+        // Now, row should have separate keys: row.timestamp and row.tbs_sum
+        const rawTs = (row.timestamp || "").trim();
+        let tsInt = parseInt(rawTs, 10);
+
+        if (!isNaN(tsInt)) {
+          // If the timestamp is exactly 10 digits, assume it's in seconds and convert to milliseconds.
+          if (rawTs.length === 10) {
+            tsInt *= 1000;
+          }
+          const tbsSum = parseFloat(row.tbs_sum) || 0;
+          rows.push({ ts: tsInt, tbsSum });
         }
       })
       .on('end', () => {
-        // Sort rows by ascending timestamp
+        // Sort rows by ascending timestamp.
         rows.sort((a, b) => a.ts - b.ts);
 
         if (rows.length < 2) {
@@ -56,7 +48,7 @@ async function analyzeOpenRan5G(filePath) {
         const totalRecords = rows.length;
         const totalLoad = rows.reduce((acc, r) => acc + r.tbsSum, 0);
 
-        let intervals = [];
+        const intervals = [];
         let sumThroughput = 0;
         let throughputCount = 0;
         let minThroughput = Infinity;
@@ -66,26 +58,22 @@ async function analyzeOpenRan5G(filePath) {
         for (let i = 0; i < rows.length - 1; i++) {
           const start = rows[i];
           const end = rows[i + 1];
-          const deltaT = (end.ts - start.ts) / 1000; // time difference in seconds
+          const deltaT = (end.ts - start.ts) / 1000; // seconds
           if (deltaT <= 0) continue;
 
           let deltaTbs = end.tbsSum - start.tbsSum;
-          if (deltaTbs < 0) deltaTbs = 0; // Ensure non-negative
+          if (deltaTbs < 0) deltaTbs = 0;
 
-          // Throughput in bits per second; then convert to Mb/s.
           const throughputBps = deltaTbs / deltaT;
           const throughputMbps = throughputBps / 1e6;
-
-          if (throughputMbps < minThroughput) minThroughput = throughputMbps;
+if (throughputMbps < minThroughput) minThroughput = throughputMbps;
           if (throughputMbps > maxThroughput) maxThroughput = throughputMbps;
           sumThroughput += throughputMbps;
           throughputCount++;
 
-          // Determine if this interval is a bottleneck (example: > 100 Mb/s)
           const isBottleneck = throughputMbps > 100;
           if (isBottleneck) bottleneckCount++;
 
-          // Dummy latency calculation: 1 / (throughput + 1)
           const latency = 1 / (throughputMbps + 1);
 
           intervals.push({
@@ -114,10 +102,25 @@ async function analyzeOpenRan5G(filePath) {
           intervals
         });
       })
-      .on('error', (err) => {
-        reject(err);
-      });
+      .on('error', (err) => reject(err));
   });
 }
 
-module.exports = analyzeOpenRan5G;
+if (require.main === module) {
+  const filePath = process.argv[2];
+  if (!filePath) {
+    console.error('Usage: node analyzeOpenRan5G.js <path-to-csv-file>');
+    process.exit(1);
+  }
+
+  analyzeOpenRan5G(filePath)
+    .then(result => {
+      console.log('Analysis Result:');
+      console.log(JSON.stringify(result, null, 2));
+    })
+    .catch(err => {
+      console.error('Error during analysis:', err);
+    });
+} else {
+  module.exports = analyzeOpenRan5G;
+}

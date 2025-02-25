@@ -9,7 +9,6 @@ const MLModel = require('../models/MLModel');
 const PipelineDefinition = require('../models/PipelineDefinition');
 const { getKafkaProducer } = require('../utils/kafka');
 
-
 // Dummy NiFi utility functions (simulate NiFi flow creation/clone)
 const {
   createMinimalKafkaNiFiTemplate,
@@ -44,15 +43,15 @@ const pipelineRuns = {};
  * 3) Calculates total load (sum of tbs_sum), average throughput, min/max throughput, 
  *    approximate latency, and bottleneck counts (if throughput > 100 Mbps).
  *
- * You can refine logic (e.g., if tbs_sum is in bytes, multiply by 8 for bits, etc.)
+ * Note: The CSV is expected to be comma-separated.
  */
-
 async function analyzeOpenRan5G(filePath) {
   return new Promise((resolve, reject) => {
     const rows = [];
 
     fs.createReadStream(filePath)
-      .pipe(csv({ separator: '\t' })) // <-- Use tab as delimiter, if your data is tab-delimited
+      // Removed the tab separator so the CSV parser uses the default comma delimiter.
+      .pipe(csv())
       .on('data', (row) => {
         const rawTs = (row.timestamp || "").trim();
         let tsInt = parseInt(rawTs, 10);
@@ -76,7 +75,6 @@ async function analyzeOpenRan5G(filePath) {
             message: 'Not enough data points to compute throughput.'
           });
         }
-
         const totalRecords = rows.length;
         const totalLoad = rows.reduce((acc, r) => acc + r.tbsSum, 0);
 
@@ -84,7 +82,6 @@ async function analyzeOpenRan5G(filePath) {
         const intervals = [];
         let sumThroughput = 0;
         let throughputCount = 0;
-
         let minThroughput = Infinity;
         let maxThroughput = -Infinity;
         let bottleneckCount = 0;
@@ -95,29 +92,26 @@ async function analyzeOpenRan5G(filePath) {
           const deltaT = (end.ts - start.ts) / 1000; // seconds
           if (deltaT <= 0) continue;
 
-          // Because tbsSum is in bits, deltaTbs is in bits
+          // tbsSum is in bits so the difference (deltaTbs) is in bits
           let deltaTbs = end.tbsSum - start.tbsSum;
-          if (deltaTbs < 0) deltaTbs = 0; // ignore negative
+          if (deltaTbs < 0) deltaTbs = 0; // ignore negative differences
 
-          // bits per second
+          // Throughput in bits per second
           const throughputBps = deltaTbs / deltaT;
-          // convert to Mb/s
+          // Convert bits per second to Megabits per second
           const throughputMbps = throughputBps / 1e6;
 
-          // Update min/max
           if (throughputMbps < minThroughput) minThroughput = throughputMbps;
           if (throughputMbps > maxThroughput) maxThroughput = throughputMbps;
 
-          // Sum for average
           sumThroughput += throughputMbps;
           throughputCount++;
 
-          // Check if throughput is a "bottleneck" if > 100 Mbps 
-          // (or whichever logic you prefer)
+          // Flag as bottleneck if throughput > 100 Mbps
           const isBottleneck = (throughputMbps > 100);
           if (isBottleneck) bottleneckCount++;
 
-          // Dummy latency heuristic:
+          // Dummy latency calculation
           const latency = 1 / (throughputMbps + 1);
 
           intervals.push({
@@ -130,14 +124,9 @@ async function analyzeOpenRan5G(filePath) {
           });
         }
 
-        let avgThroughput = 0;
-        if (throughputCount > 0) {
-          avgThroughput = sumThroughput / throughputCount;
-        }
+        let avgThroughput = throughputCount > 0 ? sumThroughput / throughputCount : 0;
         if (minThroughput === Infinity) minThroughput = 0;
         if (maxThroughput === -Infinity) maxThroughput = 0;
-
-        // Approx overall latency (dummy)
         const approxLatency = 1 / (avgThroughput + 1);
 
         resolve({
@@ -156,7 +145,6 @@ async function analyzeOpenRan5G(filePath) {
       });
   });
 }
-
 /**
  * createPipelineDefinition
  * Expects:
@@ -181,9 +169,6 @@ exports.createPipelineDefinition = async (req, res) => {
 
     // Dummy NiFi creation
     const dummyTemplateId = await createMinimalKafkaNiFiTemplate('dummy');
-    console.log(`Created dummy NiFi template: ${dummyTemplateId}`);
-
-    const dummyNifiFlow = await cloneNifiTemplate(dummyTemplateId);
     console.log(`[MLPipeline] Dummy NiFi flow ID obtained: ${dummyNifiFlow}`);
     const pipelineData = {
       name,
@@ -213,7 +198,6 @@ exports.createPipelineDefinition = async (req, res) => {
  * Simulate NiFi ingestion & analyze the TBS dataset (timestamp, tbs_sum).
  * POST /api/pipelines/:pipelineId/process
  */
-
 exports.processDataset = async (req, res) => {
   const { pipelineId } = req.params;
   if (!pipelineId) {
@@ -227,12 +211,10 @@ exports.processDataset = async (req, res) => {
     }
 
     console.log(`[processDataset] TBS dataset for pipeline ${pipelineId}`);
-
     // Build an absolute path to the dataset file.
     const datasetFilePath = path.join(__dirname, '..', pipeline.dataset);
     console.log('[processDataset] Using dataset file at:', datasetFilePath);
-
-    // Analyze the dataset using the absolute path
+// Analyze the dataset using the absolute path
     const openRanAnalysis = await analyzeOpenRan5G(datasetFilePath);
     console.log('[processDataset] openRanAnalysis:', openRanAnalysis);
 
@@ -250,7 +232,6 @@ exports.processDataset = async (req, res) => {
     }]
   });
   console.log(`[Kafka] Message produced to topic ${pipeline.kafkaTopic}`);
-
   // Optionally, update in-memory run state
   pipelineRuns[pipelineId] = {
     dataset: pipeline.dataset,
@@ -270,38 +251,37 @@ exports.processDataset = async (req, res) => {
 }
 };
 
-
 /**
- * nifiCallback
- * POST /api/pipelines/nifi-callback
- * => Trigger Spark job to train a model & store training metrics
- */
+* nifiCallback
+* POST /api/pipelines/nifi-callback
+* => Trigger Spark job to train a model & store training metrics
+*/
 exports.nifiCallback = async (req, res) => {
-  const { pipelineId } = req.body;
-  if (!pipelineId) {
-    return res.status(400).json({ error: 'pipelineId is required in callback.' });
-  }
+const { pipelineId } = req.body;
+if (!pipelineId) {
+  return res.status(400).json({ error: 'pipelineId is required in callback.' });
+}
 
-  const run = pipelineRuns[pipelineId];
-  if (!run) {
-    return res.status(404).json({ error: 'No pipeline run found for that pipelineId.' });
-  }
+const run = pipelineRuns[pipelineId];
+if (!run) {
+  return res.status(404).json({ error: 'No pipeline run found for that pipelineId.' });
+}
 
-  try {
-    run.status = 'Dataset processing complete';
-    console.log(`[nifiCallback] Pipeline ${pipelineId} => ready for Spark training.`);
+try {
+  run.status = 'Dataset processing complete';
+  console.log(`[nifiCallback] Pipeline ${pipelineId} => ready for Spark training.`);
 
-    // 1) Trigger Spark job, pass the dataset path
-    const sparkCmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/train_model.py --dataset ${run.dataset}`;
-    const sparkResult = await runCommand(sparkCmd);
-    console.log('[Spark] Training logs:', sparkResult.stdout);
+   // 1) Trigger Spark job, pass the dataset path
+   const sparkCmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/train_model.py --dataset ${run.dataset}`;
+   const sparkResult = await runCommand(sparkCmd);
+   console.log('[Spark] Training logs:', sparkResult.stdout);
 
-    // 2) Simulate storing trained model info
-    const accuracy = 0.95;
-    const artifactPath = `/usr/src/app/models/model_${pipelineId}`;
-    const newModel = await MLModel.create({
-      name: `model_${pipelineId}`,
-      version: '1.0',
+   // 2) Simulate storing trained model info
+   const accuracy = 0.95;
+   const artifactPath = `/usr/src/app/models/model_${pipelineId}`;
+   const newModel = await MLModel.create({
+    name: `model_${pipelineId}`,
+    version: '1.0',
       accuracy,
       artifactPath
     });
@@ -333,7 +313,6 @@ exports.nifiCallback = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 /**
  * getPipelineStatus
  * GET /api/pipelines/:pipelineId/status
@@ -362,3 +341,6 @@ exports.getPipelineStatus = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+
+
