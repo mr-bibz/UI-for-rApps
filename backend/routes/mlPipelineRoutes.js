@@ -30,6 +30,7 @@ const upload = multer({ storage, fileFilter });
 const {
   createPipelineDefinition,
   processDataset,
+  downloadAnalysisCsv,
   nifiCallback,
   getPipelineStatus
 } = require('../controllers/mlPipelineController');
@@ -47,6 +48,9 @@ router.post('/nifi/callback', nifiCallback);
 
 // GET pipeline status => returns openRanAnalysis + trainingMetrics
 router.get('/status/:pipelineId', getPipelineStatus);
+
+//Download Analysis CSV for pipeline
+router.get('/:pipelineId/analysis.csv', downloadAnalysisCsv);
 
 // GET all pipeline definitions (for listing in a dashboard)
 router.get('/', async (req, res) => {

@@ -30,6 +30,13 @@ const Monitoring = () => {
     }
   };
 
+  // Open the CSV download URL in a new tab
+  const handleDownloadCsv = () => {
+    if (monitorData && monitorData.csvDownloadPath) {
+      window.open(monitorData.csvDownloadPath, '_blank');
+    }
+  };
+
   return (
     <Container sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
@@ -110,6 +117,15 @@ const Monitoring = () => {
                     )}
                   </Box>
                 )}
+            </Box>
+          )}
+          
+          {/* Download CSV Button */}
+          {monitorData.csvDownloadPath && (
+            <Box sx={{ mt: 2 }}>
+              <Button variant="contained" onClick={handleDownloadCsv}>
+                Download Full Analysis CSV
+              </Button>
             </Box>
           )}
 

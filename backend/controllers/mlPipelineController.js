@@ -218,7 +218,6 @@ exports.processDataset = async (req, res) => {
     }
 
     console.log(`[processDataset] TBS dataset for pipeline ${pipelineId}`);
-
     // Build an absolute path to the dataset file.
     const datasetFilePath = path.join(__dirname, '..', pipeline.dataset);
     console.log('[processDataset] Using dataset file at:', datasetFilePath);
@@ -227,8 +226,30 @@ exports.processDataset = async (req, res) => {
     const openRanAnalysis = await analyzeOpenRan5G(datasetFilePath);
     console.log('[processDataset] openRanAnalysis:', openRanAnalysis);
 
-    // Store the analysis in the pipeline document
-    pipeline.openRanAnalysis = openRanAnalysis;
+    // Separate intervals from the summary
+    const { intervals = [], ...analysisSummary } = openRanAnalysis;
+
+    // Generate CSV content from intervals
+    let csvContent = 'timestampStart,timestampEnd,deltaT,throughput,latency,bottleneck\n';
+    intervals.forEach(interval => {
+      csvContent += [
+        interval.timestampStart,
+        interval.timestampEnd,
+        interval.deltaT,
+        interval.throughput,
+        interval.latency,
+        interval.bottleneck
+      ].join(',') + '\n';
+    });
+
+    // Write the CSV file to disk (e.g., in the "uploads" folder)
+    const csvFileName = `analysis_${pipelineId}.csv`;
+    const csvFilePath = path.join(__dirname, '..', 'uploads', csvFileName);
+    fs.writeFileSync(csvFilePath, csvContent);
+
+    // Store the summary (without huge intervals) and the CSV path in the pipeline doc
+    pipeline.openRanAnalysis = analysisSummary;  // summary only, not the full intervals array
+    pipeline.analysisCsvPath = csvFileName;        // store the CSV filename or relative path
     pipeline.status = 'processing';
     pipeline.updatedAt = new Date();
     await pipeline.save();
@@ -237,29 +258,60 @@ exports.processDataset = async (req, res) => {
     const producer = await getKafkaProducer();
     await producer.send({
       topic: pipeline.kafkaTopic,
-      messages: [{ value: `OpenRAN TBS analysis done: ${JSON.stringify(openRanAnalysis)}`
-    }]
-  });
-  console.log(`[Kafka] Message produced to topic ${pipeline.kafkaTopic}`);
+      messages: [{
+        value: `OpenRAN TBS analysis done: ${JSON.stringify(openRanAnalysis)}`
+      }]
+    });
+    console.log( `[Kafka] Message produced to topic ${pipeline.kafkaTopic}`);
+     // Optionally, update in-memory run state
+     pipelineRuns[pipelineId] = {
+      dataset: pipeline.dataset,
+      openRanAnalysis,
+      status: 'Dataset processing complete'
+    };
 
-  // Optionally, update in-memory run state
-  pipelineRuns[pipelineId] = {
-    dataset: pipeline.dataset,
-    openRanAnalysis,
-    status: 'Dataset processing complete'
-  };
-
-  res.json({
-    success: true,
-    message: 'OpenRAN TBS dataset processed.',
-    pipelineId,
-    openRanAnalysis
-  });
-} catch (error) {
-  console.error('[processDataset] error:', error.message);
-  res.status(500).json({ error: error.message });
-}
+    // Return the summary along with a download path for the full CSV
+    res.json({
+      success: true,
+      message: 'OpenRAN TBS dataset processed.',
+      pipelineId,
+      openRanAnalysis: analysisSummary, // summary metrics only
+      csvDownloadPath: `/api/pipelines/${pipelineId}/analysis.csv`
+    });
+  } catch (error) {
+    console.error('[processDataset] error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
 };
+
+
+/**
+ * Serving the new downloaded Csv file 
+ * 
+ */
+
+exports.downloadAnalysisCsv = async (req, res) => {
+  try {
+    const { pipelineId } = req.params;
+    const pipeline = await PipelineDefinition.findById(pipelineId);
+    if (!pipeline || !pipeline.analysisCsvPath) {
+      return res.status(404).json({ error: 'No CSV analysis found for this pipeline.' });
+    }
+
+    const csvFilePath = path.join(__dirname, '..', 'uploads', pipeline.analysisCsvPath);
+    res.download(csvFilePath, (err) => {
+      if (err) {
+        console.error('[downloadAnalysisCsv] Error sending file:', err);
+        return res.status(500).json({ error: 'Error downloading CSV file' });
+      }
+    });
+  } catch (error) {
+    console.error('[downloadAnalysisCsv] error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
 /**
  * nifiCallback
  * POST /api/pipelines/nifi-callback
@@ -344,7 +396,8 @@ exports.getPipelineStatus = async (req, res) => {
       pipelineId,
       status: pipeline.status,
       openRanAnalysis: pipeline.openRanAnalysis || null,
-      trainingMetrics: pipeline.trainingMetrics || null
+      trainingMetrics: pipeline.trainingMetrics || null,
+      csvDownloadPath: pipeline.analysisCsvPath ? `/api/pipelines/${pipelineId}/analysis.csv`: null
     });
   } catch (error) {
     console.error('[getPipelineStatus] error:', error.message);
