@@ -1,5 +1,6 @@
 // controllers/mlPipelineController.js
 
+const path = require('path');
 const fs = require('fs');
 const csv = require('csv-parser');
 const { exec } = require('child_process');
@@ -203,6 +204,7 @@ exports.createPipelineDefinition = async (req, res) => {
  * Simulate NiFi ingestion & analyze the TBS dataset (timestamp, tbs_sum).
  * POST /api/pipelines/:pipelineId/process
  */
+
 exports.processDataset = async (req, res) => {
   const { pipelineId } = req.params;
   if (!pipelineId) {
@@ -215,46 +217,50 @@ exports.processDataset = async (req, res) => {
       return res.status(404).json({ error: 'Pipeline not found.' });
     }
 
-    console.log(`[processDataset] TBS dataset for pipeline ${pipelineId}, NiFi flow: ${pipeline.nifiFlow}`);
+    console.log(`[processDataset] TBS dataset for pipeline ${pipelineId}`);
 
-    // 1) Analyze TBS dataset
-    const openRanAnalysis = await analyzeOpenRan5G(pipeline.dataset);
+    // Build an absolute path to the dataset file.
+    const datasetFilePath = path.join(process.cwd(), pipeline.dataset);
+    console.log('[processDataset] Using dataset file at:', datasetFilePath);
+
+    // Analyze the dataset using the absolute path
+    const openRanAnalysis = await analyzeOpenRan5G(datasetFilePath);
     console.log('[processDataset] openRanAnalysis:', openRanAnalysis);
 
-    // 2) Store in pipeline doc
+    // Store the analysis in the pipeline document
     pipeline.openRanAnalysis = openRanAnalysis;
     pipeline.status = 'processing';
     pipeline.updatedAt = new Date();
     await pipeline.save();
 
-    // 3) (Optional) produce Kafka message
+    // (Optional) Send a Kafka message (if enabled)
     const producer = await getKafkaProducer();
     await producer.send({
       topic: pipeline.kafkaTopic,
-      messages: [{ value: `OpenRAN TBS analysis done: ${JSON.stringify(openRanAnalysis)}` }]
-    });
-    console.log(`[Kafka] Message produced to ${pipeline.kafkaTopic}`);
+      messages: [{ value: `OpenRAN TBS analysis done: ${JSON.stringify(openRanAnalysis)}`
+    }]
+  });
+  console.log(`[Kafka] Message produced to topic ${pipeline.kafkaTopic}`);
 
-    // 4) Also store ephemeral in pipelineRuns if desired
-    pipelineRuns[pipelineId] = {
-      nifiFlow: pipeline.nifiFlow,
-      kafkaTopic: pipeline.kafkaTopic,
-      dataset: pipeline.dataset,
-      openRanAnalysis,
-      status: 'Dataset processing complete'
-    };
+  // Optionally, update in-memory run state
+  pipelineRuns[pipelineId] = {
+    dataset: pipeline.dataset,
+    openRanAnalysis,
+    status: 'Dataset processing complete'
+  };
 
-    res.json({
-      success: true,
-      message: 'OpenRAN TBS dataset processed.',
-      pipelineId,
-      openRanAnalysis
-    });
-  } catch (error) {
-    console.error('[processDataset] error:', error.message);
-    res.status(500).json({ error: error.message });
-  }
+  res.json({
+    success: true,
+    message: 'OpenRAN TBS dataset processed.',
+    pipelineId,
+    openRanAnalysis
+  });
+} catch (error) {
+  console.error('[processDataset] error:', error.message);
+  res.status(500).json({ error: error.message });
+}
 };
+
 
 /**
  * nifiCallback
