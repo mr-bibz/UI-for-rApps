@@ -33,6 +33,12 @@ const pipelineDefinitionSchema = new mongoose.Schema({
     }]
   },
 
+  // Add this field so Mongoose will store it:
+  analysisCsvPath: {
+    type: String,
+    default: null
+  },
+
   // If you also do ML training, store training results here
   trainingMetrics: {
     accuracy: Number,
