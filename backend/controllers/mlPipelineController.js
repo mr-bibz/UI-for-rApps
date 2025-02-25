@@ -52,22 +52,23 @@ async function analyzeOpenRan5G(filePath) {
     const rows = [];
 
     fs.createReadStream(filePath)
-      .pipe(csv({ separator: '\t' })) // <-- Use tab as delimiter, if your data is tab-delimited
+      // Use default comma delimiter (no custom separator)
+      .pipe(csv())
       .on('data', (row) => {
+        // Expect keys: row.timestamp and row.tbs_sum
         const rawTs = (row.timestamp || "").trim();
         let tsInt = parseInt(rawTs, 10);
-
-        // If it's a 10-digit number, assume Unix timestamp in seconds -> convert to ms
         if (!isNaN(tsInt)) {
+          // If the timestamp is exactly 10 digits, assume seconds and convert to ms.
           if (rawTs.length === 10) {
-            tsInt = tsInt * 1000; 
+            tsInt *= 1000;
           }
           const tbsSum = parseFloat(row.tbs_sum) || 0;
           rows.push({ ts: tsInt, tbsSum });
         }
       })
       .on('end', () => {
-        // Sort by timestamp
+        // Sort the rows in ascending order of timestamp.
         rows.sort((a, b) => a.ts - b.ts);
 
         if (rows.length < 2) {
@@ -80,43 +81,40 @@ async function analyzeOpenRan5G(filePath) {
         const totalRecords = rows.length;
         const totalLoad = rows.reduce((acc, r) => acc + r.tbsSum, 0);
 
-        // We'll compute throughput between consecutive timestamps
         const intervals = [];
         let sumThroughput = 0;
         let throughputCount = 0;
-
         let minThroughput = Infinity;
         let maxThroughput = -Infinity;
         let bottleneckCount = 0;
 
+        // Compute throughput for each consecutive pair of rows.
         for (let i = 0; i < rows.length - 1; i++) {
           const start = rows[i];
           const end = rows[i + 1];
           const deltaT = (end.ts - start.ts) / 1000; // seconds
           if (deltaT <= 0) continue;
 
-          // Because tbsSum is in bits, deltaTbs is in bits
+          // Calculate the change in tbs_sum (in bits)
           let deltaTbs = end.tbsSum - start.tbsSum;
-          if (deltaTbs < 0) deltaTbs = 0; // ignore negative
-// bits per second
+          if (deltaTbs < 0) deltaTbs = 0; // if negative (e.g., reset), set to 0
+
+          // Throughput in bits per second.
           const throughputBps = deltaTbs / deltaT;
-          // convert to Mb/s
+          // Convert to Megabits per second.
           const throughputMbps = throughputBps / 1e6;
 
-          // Update min/max
+          // Update min/max statistics.
           if (throughputMbps < minThroughput) minThroughput = throughputMbps;
           if (throughputMbps > maxThroughput) maxThroughput = throughputMbps;
-
-          // Sum for average
           sumThroughput += throughputMbps;
           throughputCount++;
 
-          // Check if throughput is a "bottleneck" if > 100 Mbps 
-          // (or whichever logic you prefer)
+          // Identify bottleneck if throughput > 100 Mbps.
           const isBottleneck = (throughputMbps > 100);
           if (isBottleneck) bottleneckCount++;
 
-          // Dummy latency heuristic:
+          // Dummy latency calculation (inverse relation).
           const latency = 1 / (throughputMbps + 1);
 
           intervals.push({
@@ -129,14 +127,9 @@ async function analyzeOpenRan5G(filePath) {
           });
         }
 
-        let avgThroughput = 0;
-        if (throughputCount > 0) {
-          avgThroughput = sumThroughput / throughputCount;
-        }
+        const avgThroughput = throughputCount > 0 ? sumThroughput / throughputCount : 0;
         if (minThroughput === Infinity) minThroughput = 0;
         if (maxThroughput === -Infinity) maxThroughput = 0;
-
-        // Approx overall latency (dummy)
         const approxLatency = 1 / (avgThroughput + 1);
 
         resolve({
@@ -150,11 +143,11 @@ async function analyzeOpenRan5G(filePath) {
           intervals
         });
       })
-      .on('error', (err) => {
-        reject(err);
-      });
+      .on('error', (err) => reject(err));
   });
 }
+
+
 /**
  * createPipelineDefinition
  * Expects:
