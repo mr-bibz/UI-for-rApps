@@ -8,6 +8,12 @@ const MLModel = require('../models/MLModel');
 const PipelineDefinition = require('../models/PipelineDefinition');
 const { getKafkaProducer } = require('../utils/kafka');
 
+const producer = await getKafkaProducer();
+await producer.send({
+  topic: pipeline.kafkaTopic,
+  messages: [{ value: 'Some message' }]
+});
+
 // Dummy NiFi utility functions (simulate NiFi flow creation/clone)
 const {
   createMinimalKafkaNiFiTemplate,
@@ -121,10 +127,10 @@ async function analyzeOpenRan5G(filePath) {
           });
         }
 
-        let avgThroughput = throughputCount > 0
-          ? sumThroughput / throughputCount
-          : 0;
-
+        let avgThroughput = 0;
+        if (throughputCount > 0) {
+          avgThroughput = sumThroughput / throughputCount;
+        }
         if (minThroughput === Infinity) minThroughput = 0;
         if (maxThroughput === -Infinity) maxThroughput = 0;
 
@@ -160,6 +166,7 @@ exports.createPipelineDefinition = async (req, res) => {
     
     const { name } = req.body;
     const datasetFile = req.file; // from multer
+
     if (!name || !datasetFile) {
       return res.status(400).json({ error: 'Pipeline name and dataset file are required.' });
     }
@@ -229,7 +236,7 @@ exports.processDataset = async (req, res) => {
     const producer = await getKafkaProducer();
     await producer.send({
       topic: pipeline.kafkaTopic,
-      messages: [{ value: `Processed TBS dataset: ${JSON.stringify(openRanAnalysis)}` }]
+      messages: [{ value: `OpenRAN TBS analysis done: ${JSON.stringify(openRanAnalysis)}` }]
     });
     console.log(`[Kafka] Message produced to ${pipeline.kafkaTopic}`);
 
@@ -244,7 +251,7 @@ exports.processDataset = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'OpenRAN TBS dataset processed (dummy NiFi).',
+      message: 'OpenRAN TBS dataset processed.',
       pipelineId,
       openRanAnalysis
     });

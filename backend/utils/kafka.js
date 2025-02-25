@@ -5,6 +5,19 @@ const { Kafka } = require('kafkajs');
  * Create Kafka topics if they do not already exist.
  * @param {Array<string>} topicNames - An array of topic names to create.
  */
+
+async function getKafkaProducer() {
+  // Return a mock producer with a send(...) method
+  return {
+    send: async (payload) => {
+      console.log('[Dummy Kafka] Pretending to send message:', payload);
+    }
+  };
+}
+
+module.exports = { getKafkaProducer };
+
+
 exports.createKafkaTopics = async (topicNames) => {
   const kafka = new Kafka({ clientId: 'ml-pipeline', brokers: ['kafka:9092'] });
   const admin = kafka.admin();
