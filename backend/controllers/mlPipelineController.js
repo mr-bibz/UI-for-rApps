@@ -220,7 +220,7 @@ exports.processDataset = async (req, res) => {
     console.log(`[processDataset] TBS dataset for pipeline ${pipelineId}`);
 
     // Build an absolute path to the dataset file.
-    const datasetFilePath = path.join(process.cwd(), pipeline.dataset);
+    const datasetFilePath = path.join(__dirname, '..', pipeline.dataset);
     console.log('[processDataset] Using dataset file at:', datasetFilePath);
 
     // Analyze the dataset using the absolute path
