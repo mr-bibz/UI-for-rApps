@@ -391,13 +391,16 @@ exports.getPipelineStatus = async (req, res) => {
     if (!pipeline) {
       return res.status(404).json({ error: 'No pipeline found for that ID.' });
     }
+   
+  const csvDownloadPath = pipeline.analysisCsvPath 
+    ? `/api/pipelines/${pipelineId}/analysis.csv` : null;  
 
     res.json({
       pipelineId,
       status: pipeline.status,
       openRanAnalysis: pipeline.openRanAnalysis || null,
       trainingMetrics: pipeline.trainingMetrics || null,
-      csvDownloadPath: pipeline.analysisCsvPath ? `/api/pipelines/${pipelineId}/analysis.csv`: null
+      csvDownloadPath, 
     });
   } catch (error) {
     console.error('[getPipelineStatus] error:', error.message);
