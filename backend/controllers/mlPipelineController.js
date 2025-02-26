@@ -290,7 +290,7 @@ exports.nifiCallback = async (req, res) => {
  * Returns pipeline doc, including openRanAnalysis
  */
 exports.getPipelineStatus = async (req, res) => {
-  const { pipelineId } = req.params;
+  let { pipelineId } = req.params;
   if (!pipelineId) {
     return res.status(400).json({ error: 'pipelineId is required.' });
   }
