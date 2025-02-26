@@ -71,12 +71,40 @@ exports.createPipelineDefinition = async (req, res) => {
       updatedAt: new Date(),
       lastRun: null
     };
-// 3) Save pipeline
+
+
+    // 3) Save pipeline
     const newPipeline = new PipelineDefinition(pipelineData);
     const savedPipeline = await newPipeline.save();
 
     console.log('[createPipelineDefinition] Pipeline created:', savedPipeline);
+
+    // 4) IMMEDIATELY call the analysis to ensure logs appear in the container
+    //    Just re-use the same logic as processDataset, but we don't need to mock the entire request/response.
+    console.log(`[createPipelineDefinition] Immediately analyzing dataset for pipeline ${savedPipeline._id}...`);
+
+    const analysisResult = await analyzeOpenRan5G(datasetPath);
+    console.log('[createPipelineDefinition] Immediate Analysis Result:', analysisResult);
+
+    // 5) Store the analysis in the pipeline doc
+    savedPipeline.openRanAnalysis = analysisResult;
+    savedPipeline.status = 'processing';
+    savedPipeline.updatedAt = new Date();
+    await savedPipeline.save();
+
+    console.log('[createPipelineDefinition] Analysis saved to pipeline:', savedPipeline.openRanAnalysis);
+
+    // Optional: Produce a Kafka message
+    const producer = await getKafkaProducer();
+    await producer.send({
+      topic: savedPipeline.kafkaTopic,
+      messages: [{ value: `OpenRAN TBS analysis done for pipeline ${savedPipeline._id}` }]
+    });
+    console.log(`[Kafka] Message produced to topic ${savedPipeline.kafkaTopic}`);
+
+    // 6) Send the final response
     res.status(201).json(savedPipeline);
+
   } catch (error) {
     console.error('[createPipelineDefinition] error:', error.message);
     res.status(500).json({ error: error.message });
