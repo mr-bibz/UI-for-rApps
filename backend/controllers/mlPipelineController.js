@@ -215,7 +215,7 @@ exports.nifiCallback = async (req, res) => {
       pipeline.trainingMetrics = {
         accuracy,
         artifactPath,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString()
       };
       await pipeline.save();
       

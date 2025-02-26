@@ -30,12 +30,12 @@ const Monitoring = () => {
     }
   };
 
-  // Open the CSV download URL in a new tab
-  const handleDownloadCsv = () => {
-    if (monitorData && monitorData.csvDownloadPath) {
-      window.open(monitorData.csvDownloadPath, '_blank');
+  // Log trainingMetrics.updatedAt when monitorData is updated
+  useEffect(() => {
+    if (monitorData && monitorData.trainingMetrics) {
+      console.log('Raw trainingMetrics.updatedAt:', monitorData.trainingMetrics.updatedAt);
     }
-  };
+  }, [monitorData]);
 
   return (
     <Container sx={{ mt: 4, mb: 4 }}>
@@ -119,15 +119,6 @@ const Monitoring = () => {
                 )}
             </Box>
           )}
-          
-          {/* Download CSV Button */}
-          {monitorData.csvDownloadPath && (
-            <Box sx={{ mt: 2 }}>
-              <Button variant="contained" onClick={handleDownloadCsv}>
-                Download Full Analysis CSV
-              </Button>
-            </Box>
-          )}
 
           {/* Show training metrics if present */}
           {monitorData.trainingMetrics && (
@@ -141,7 +132,9 @@ const Monitoring = () => {
               </Typography>
               <Typography>
                 Last Updated:{' '}
-                {new Date(monitorData.trainingMetrics.updatedAt).toLocaleString()}
+                {monitorData.trainingMetrics.updatedAt
+                  ? new Date(monitorData.trainingMetrics.updatedAt).toLocaleString()
+                  : 'N/A'}
               </Typography>
             </Box>
           )}
