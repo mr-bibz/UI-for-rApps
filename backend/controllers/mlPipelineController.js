@@ -171,10 +171,11 @@ exports.processDataset = async (req, res) => {
  * Simulates a Spark training job, triggered after NiFi finishes ingestion.
  */
 exports.nifiCallback = async (req, res) => {
-  const { pipelineId } = req.body;
+  let { pipelineId } = req.body;
   if (!pipelineId) {
     return res.status(400).json({ error: 'pipelineId is required in callback.' });
   }
+  pipelineId = pipelineId.trim();
 
   const run = pipelineRuns[pipelineId];
   if (!run) {
@@ -216,7 +217,7 @@ exports.nifiCallback = async (req, res) => {
       pipeline.trainingMetrics = {
         accuracy,
         artifactPath,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
       await pipeline.save();
       
@@ -227,7 +228,7 @@ res.json({
       pipelineId,
       sparkLogs: sparkResult.stdout,
       modelId: newModel._id,
-      pipeline
+      pipeline,
     });
   } catch (error) {
     console.error('[nifiCallback] Spark training error:', error.message);
