@@ -1,8 +1,5 @@
-// controllers/mlPipelineController.js
-
 const path = require('path');
 const fs = require('fs');
-const csv = require('csv-parser');
 const { exec } = require('child_process');
 const { SPARK_MASTER } = require('../config');
 
@@ -18,6 +15,9 @@ const {
   createMinimalKafkaNiFiTemplate,
   cloneNifiTemplate
 } = require('../utils/nifi');
+
+// Import the OpenRAN analysis utility function
+const analyzeOpenRan5G = require('../utils/analyzeOpenRan5G');
 
 /**
  * runCommand
@@ -52,28 +52,26 @@ exports.createPipelineDefinition = async (req, res) => {
     const datasetPath = datasetFile.path;
     console.log(`[createPipelineDefinition] Creating pipeline "${name}" with dataset "${datasetPath}"`);
 
-     // 1) Dummy NiFi creation
-     const dummyTemplateId = await createMinimalKafkaNiFiTemplate('dummy');
-     console.log(`[NiFi] Created dummy NiFi template: ${dummyTemplateId}`);
+    // 1) Dummy NiFi creation
+    const dummyTemplateId = await createMinimalKafkaNiFiTemplate('dummy');
+    console.log(`[NiFi] Created dummy NiFi template: ${dummyTemplateId}`);
 
-     const dummyNifiFlow = await cloneNifiTemplate(dummyTemplateId);
-     console.log(`[NiFi] Dummy NiFi flow ID obtained: ${dummyNifiFlow}`);
+    const dummyNifiFlow = await cloneNifiTemplate(dummyTemplateId);
+    console.log(`[NiFi] Dummy NiFi flow ID obtained: ${dummyNifiFlow}`);
 
-     // 2) Prepare pipeline doc
+    // 2) Prepare pipeline doc
     const pipelineData = {
       name,
       dataset: datasetPath,
       nifiFlow: dummyNifiFlow,
       kafkaTopic: `dummy-topic-${Date.now()}`,
-
       sparkJob: 'dummy-spark-job',
       status: 'inactive',
       createdAt: new Date(),
       updatedAt: new Date(),
       lastRun: null
     };
-
-    // 3) Save pipeline
+// 3) Save pipeline
     const newPipeline = new PipelineDefinition(pipelineData);
     const savedPipeline = await newPipeline.save();
 
@@ -87,9 +85,8 @@ exports.createPipelineDefinition = async (req, res) => {
 
 /**
  * processDataset
- * Reads the pipeline's CSV file, logs each row as "Parsed row: {...}",
- * computes throughput analysis, logs "Analysis Result: {...}",
- * and saves the analysis in the pipeline doc. Also sends a Kafka message.
+ * Reads the pipeline's CSV file by calling the utility function from utils/analyzeOpenRan5G.js,
+ * saves the analysis in the pipeline doc, and sends a Kafka message.
  */
 exports.processDataset = async (req, res) => {
   const { pipelineId } = req.params;
@@ -108,98 +105,17 @@ exports.processDataset = async (req, res) => {
     const datasetFilePath = path.join(__dirname, '..', pipeline.dataset);
     console.log('[processDataset] Using dataset file at:', datasetFilePath);
 
-    // 2) Parse the CSV and compute analysis
-    const openRanAnalysis = await new Promise((resolve, reject) => {
-      const rows = [];
-
-      fs.createReadStream(datasetFilePath)
-        .pipe(csv()) // default comma delimiter
-        .on('data', (row) => {
-          // Log each parsed row exactly like your local script
-          // console.log('Parsed row:', row);
-
-          const rawTs = (row.timestamp || "").trim();
-          let tsInt = parseInt(rawTs, 10);
-
-          // If exactly 10 digits, treat as seconds -> convert to ms
-          if (!isNaN(tsInt)) {
-            if (rawTs.length === 10) {
-              tsInt *= 1000;
-            }
-            const tbsSum = parseFloat(row.tbs_sum) || 0;
-            rows.push({ ts: tsInt, tbsSum });
-          }
-        })
-        .on('end', () => {
-          rows.sort((a, b) => a.ts - b.ts);
-
-          if (rows.length < 2) {
-            const result = {
-              totalRecords: rows.length,
-              message: 'Not enough data points to compute throughput.'
-            };
-            console.log('Analysis Result:', result);
-            return resolve(result);
-          }
-
-          const totalRecords = rows.length;
-          const totalLoad = rows.reduce((acc, r) => acc + r.tbsSum, 0);
-
-          let sumThroughput = 0;
-          let throughputCount = 0;
-          let minThroughput = Infinity;
-          let maxThroughput = -Infinity;
-          let bottleneckCount = 0;
-
-          for (let i = 0; i < rows.length - 1; i++) {
-            const start = rows[i];
-            const end = rows[i + 1];
-            const deltaT = (end.ts - start.ts) / 1000; // seconds
-            if (deltaT <= 0) continue;
-
-            let deltaTbs = end.tbsSum - start.tbsSum;
-            if (deltaTbs < 0) deltaTbs = 0;
-
-            const throughputBps = deltaTbs / deltaT;
-            const throughputMbps = throughputBps / 1e6;
-
-            if (throughputMbps < minThroughput) minThroughput = throughputMbps;
-            if (throughputMbps > maxThroughput) maxThroughput = throughputMbps;
-            sumThroughput += throughputMbps;
-            throughputCount++;
-
-            if (throughputMbps > 100) {
-              bottleneckCount++;
-            }
-          }
-
-          const avgThroughput = throughputCount > 0 ? sumThroughput / throughputCount : 0;
-          if (minThroughput === Infinity) minThroughput = 0;
-          if (maxThroughput === -Infinity) maxThroughput = 0;
-          const approxLatency = 1 / (avgThroughput + 1);
-
-          const finalAnalysis = {
-            totalRecords,
-            totalLoad,
-            avgThroughput,
-            minThroughput,
-            maxThroughput,
-            approxLatency,
-            bottleneckCount
-          };
-
-          // Log the final analysis result
-          console.log('Analysis Result:', finalAnalysis);
-          resolve(finalAnalysis);
-        })
-        .on('error', (err) => reject(err));
-    });
+    // 2) Call the analysis function from utils/analyzeOpenRan5G.js
+    const openRanAnalysis = await analyzeOpenRan5G(datasetFilePath);
+    // (Your analyzeOpenRan5G.js file will log details such as "Parsed row:" and "Analysis Result:" to stdout)
 
     // 3) Save the analysis to the pipeline doc
     pipeline.openRanAnalysis = openRanAnalysis;
     pipeline.status = 'processing';
     pipeline.updatedAt = new Date();
     await pipeline.save();
+
+    console.log('[processDataset] Analysis saved to pipeline:', pipeline.openRanAnalysis);
 
     // 4) (Optional) Send a Kafka message
     const producer = await getKafkaProducer();
@@ -212,7 +128,7 @@ exports.processDataset = async (req, res) => {
     // 5) Respond with the analysis
     res.json({
       success: true,
-      message: 'OpenRAN TBS dataset processed. Check container logs for row-by-row details!',
+      message: 'OpenRAN TBS dataset processed.',
       pipelineId,
       openRanAnalysis
     });
@@ -241,17 +157,19 @@ exports.nifiCallback = async (req, res) => {
     run.status = 'Dataset processing complete';
     console.log(`[nifiCallback] Pipeline ${pipelineId} => ready for Spark training.`);
 
-    // 1) Trigger Spark job
-    const sparkCmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/train_model.py --dataset ${run.dataset}`;
-    const sparkResult = await runCommand(sparkCmd);
+     // 1) Trigger Spark job
+     const sparkCmd = `spark-submit --master ${SPARK_MASTER} /usr/src/app/jobs/train_model.py --dataset ${run.dataset}`;
+     const sparkResult = await runCommand(sparkCmd);
     console.log('[Spark] Training logs:', sparkResult.stdout);
 
-        // 2) Simulate storing trained model info
-        const accuracy = 0.95;
-        const artifactPath = `/usr/src/app/models/model_${pipelineId}`;
-        const newModel = await MLModel.create({
-          name: `model_${pipelineId}`,
-          version: '1.0',
+    // 2) Simulate storing trained model info
+    const accuracy = 0.95;
+    const artifactPath = `/usr/src/app/models/model_${pipelineId}`;
+
+    const newModel = await MLModel.create({
+      name: `model_${pipelineId}`,
+
+      version: '1.0',
       accuracy,
       artifactPath
     });
@@ -271,8 +189,7 @@ exports.nifiCallback = async (req, res) => {
       };
       await pipeline.save();
     }
-
-    res.json({
+res.json({
       success: true,
       pipelineId,
       sparkLogs: sparkResult.stdout,
