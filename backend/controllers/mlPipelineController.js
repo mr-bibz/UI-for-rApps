@@ -207,8 +207,9 @@ exports.nifiCallback = async (req, res) => {
 
     // 3) Also persist training metrics in the pipeline doc
     let pipeline = await PipelineDefinition.findById(pipelineId);
-    if (pipeline) {
-       
+    if (!pipeline) {
+       return res.status(404).json({ error: 'Pipeline not found in DB.'});
+    } 
 
       pipeline.status = 'trained';
       pipeline.lastRun = new Date();
@@ -217,17 +218,17 @@ exports.nifiCallback = async (req, res) => {
         artifactPath,
         updatedAt: new Date().toISOString()
       };
+      pipeline.markModified('trainingMetrics');
       await pipeline.save();
       
       pipeline = await PipelineDefinition.findById(pipelineId);
       console.log('[nifiCallback] Updated pipeline doc =>', pipeline);
-    };
-res.json({
+     return res.json({
       success: true,
       pipelineId,
       sparkLogs: sparkResult.stdout,
       modelId: newModel._id,
-      pipeline,
+      pipeline
     });
   } catch (error) {
     console.error('[nifiCallback] Spark training error:', error.message);
