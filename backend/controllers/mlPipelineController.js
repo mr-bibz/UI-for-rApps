@@ -171,11 +171,10 @@ exports.processDataset = async (req, res) => {
  * Simulates a Spark training job, triggered after NiFi finishes ingestion.
  */
 exports.nifiCallback = async (req, res) => {
-  let { pipelineId } = req.body;
+  const { pipelineId } = req.body;
   if (!pipelineId) {
     return res.status(400).json({ error: 'pipelineId is required in callback.' });
   }
-  pipelineId = pipelineId.trim();
 
   const run = pipelineRuns[pipelineId];
   if (!run) {
@@ -207,10 +206,9 @@ exports.nifiCallback = async (req, res) => {
     console.log('[nifiCallback] Model stored =>', newModel._id);
 
     // 3) Also persist training metrics in the pipeline doc
-    const pipeline = await PipelineDefinition.findById(pipelineId);
-    if (!pipeline) {
-       return res.status(404).json({error: 'Pipeline not found in DB.'});
-    }
+    let pipeline = await PipelineDefinition.findById(pipelineId);
+    if (pipeline) {
+       
 
       pipeline.status = 'trained';
       pipeline.lastRun = new Date();
@@ -221,8 +219,9 @@ exports.nifiCallback = async (req, res) => {
       };
       await pipeline.save();
       
+      pipeline = await PipelineDefinition.findById(pipelineId);
       console.log('[nifiCallback] Updated pipeline doc =>', pipeline);
-
+    };
 res.json({
       success: true,
       pipelineId,
