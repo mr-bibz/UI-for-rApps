@@ -116,7 +116,7 @@ exports.processDataset = async (req, res) => {
         .pipe(csv()) // default comma delimiter
         .on('data', (row) => {
           // Log each parsed row exactly like your local script
-          console.log('Parsed row:', row);
+          // console.log('Parsed row:', row);
 
           const rawTs = (row.timestamp || "").trim();
           let tsInt = parseInt(rawTs, 10);

@@ -66,7 +66,7 @@ function analyzeOpenRan5G(filePath) {
 
           const throughputBps = deltaTbs / deltaT;
           const throughputMbps = throughputBps / 1e6;
-if (throughputMbps < minThroughput) minThroughput = throughputMbps;
+          if (throughputMbps < minThroughput) minThroughput = throughputMbps;
           if (throughputMbps > maxThroughput) maxThroughput = throughputMbps;
           sumThroughput += throughputMbps;
           throughputCount++;
