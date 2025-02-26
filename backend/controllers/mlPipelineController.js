@@ -295,6 +295,8 @@ exports.getPipelineStatus = async (req, res) => {
     return res.status(400).json({ error: 'pipelineId is required.' });
   }
 
+  pipelineId = pipelineId.trim();
+
   try {
     const pipeline = await PipelineDefinition.findById(pipelineId);
     if (!pipeline) {
