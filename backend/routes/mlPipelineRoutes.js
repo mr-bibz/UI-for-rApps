@@ -26,11 +26,10 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter });
 
-// 3. Import the controller functions
+// 3. Import the controller functions (remove downloadAnalysisCsv)
 const {
   createPipelineDefinition,
   processDataset,
-  downloadAnalysisCsv,
   nifiCallback,
   getPipelineStatus
 } = require('../controllers/mlPipelineController');
@@ -40,17 +39,14 @@ const {
 // CREATE pipeline (upload CSV with columns "timestamp,tbs_sum")
 router.post('/create', upload.single('dataset'), createPipelineDefinition);
 
-// PROCESS dataset => analyze "timestamp,tbs_sum" to compute throughput & store in openRanAnalysis
+// PROCESS dataset => analyze "timestamp,tbs_sum" to compute throughput & store analysis (logs will show the full analysis)
 router.post('/process/:pipelineId', processDataset);
 
 // NIFI CALLBACK => triggers Spark training
 router.post('/nifi/callback', nifiCallback);
 
-// GET pipeline status => returns openRanAnalysis + trainingMetrics
+// GET pipeline status => returns openRanAnalysis & trainingMetrics
 router.get('/status/:pipelineId', getPipelineStatus);
-
-//Download Analysis CSV for pipeline
-router.get('/:pipelineId/analysis.csv', downloadAnalysisCsv);
 
 // GET all pipeline definitions (for listing in a dashboard)
 router.get('/', async (req, res) => {
