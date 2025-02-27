@@ -8,21 +8,23 @@ import InterpretabilityPanel from '../components/InterpretabilityPanel';
 import ContainerMetrics from '../components/ContainerMetrics';
 
 const Validation = () => {
-  const { pipelineId } = useParams(); // Fetch pipelineId from URL if needed
+  const { pipelineId } = useParams();
 
   return (
-    <Container sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
         Validation & AI Interpretability
       </Typography>
+      
       <Grid2 container spacing={3}>
-        <Grid2 item xs={12}>
-          <Paper sx={{ p: 2, mb: 3 }}>
+        <Grid2 item xs={12} md={8}>
+          <Paper sx={{ p: 2, height: '100%' }}>
             <InterpretabilityPanel pipelineId={pipelineId} />
           </Paper>
         </Grid2>
-        <Grid2 item xs={12}>
-          <Paper sx={{ p: 2 }}>
+        
+        <Grid2 item xs={12} md={4}>
+          <Paper sx={{ p: 2, height: '100%' }}>
             <ContainerMetrics />
           </Paper>
         </Grid2>

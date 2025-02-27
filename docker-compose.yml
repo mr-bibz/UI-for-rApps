@@ -137,6 +137,7 @@ services:
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: cadvisor
+    command: ["--enable_cors"]
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
