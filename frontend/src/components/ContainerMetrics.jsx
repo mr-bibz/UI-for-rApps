@@ -22,7 +22,7 @@ const ContainerMetrics = () => {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const response = await axios.get('http://localhost:8085/api/v1.3/subcontainers');
+        const response = await axios.get('http://cadvisor:8080/api/v1.3/subcontainers');
         setContainers(response.data);
         setLoading(false);
       } catch (err) {
@@ -53,13 +53,16 @@ const ContainerMetrics = () => {
     return `${(cpu / 1e9).toFixed(2)} GHz`;
   };
 
-  const filteredContainers = containers.filter(container => {
-    const name = container.name?.toLowerCase();
-    return name?.includes('nifi') || 
-           name?.includes('kafka') || 
-           name?.includes('spark') || 
-           name?.includes('cadvisor');
-  });
+
+ // const filteredContainers = containers.filter(container => {
+ //   const name = container.name?.toLowerCase();
+ //   return name?.includes('nifi') || 
+ //          name?.includes('kafka') || 
+ //          name?.includes('spark') || 
+ //          name?.includes('cadvisor');
+ // });
+
+     const filteredContainers = containers;
 
   if (loading) {
     return (
