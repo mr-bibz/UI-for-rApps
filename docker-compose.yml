@@ -96,6 +96,7 @@ services:
       - nifi
       - spark-master
       - spark-worker
+      - cadvisor
     environment:
       - PORT=3000
       - NIFI_BASE_URL=http://nifi:8080/nifi-api
@@ -117,6 +118,7 @@ services:
     container_name: frontend
     depends_on:
       - backend
+      - cadvisor
     ports:
       - "80:80"
 
