@@ -1,4 +1,3 @@
-// ContainerMetricsChart.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Bar } from 'react-chartjs-2';
@@ -12,15 +11,42 @@ import {
   Legend,
 } from 'chart.js';
 
-// Register the necessary Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+// Helper function to convert bytes to MB with 2 decimals.
+function bytesToMB(bytes) {
+  return (bytes / (1024 * 1024)).toFixed(2);
+}
+
+// Docker-only fallback logic for container naming
+function deriveContainerName(container) {
+  // 1. Docker Compose label
+  if (container.spec?.labels?.['com.docker.compose.service']) {
+    return container.spec.labels['com.docker.compose.service'];
+  }
+
+  // 2. If aliases exist, use the first alias
+  if (container.aliases && container.aliases.length > 0) {
+    return container.aliases[0];
+  }
+
+  // 3. container.name
+  if (container.name) {
+    return container.name.replace(/^\/docker\//, '');
+  }
+
+  // 4. container.id
+  if (container.id) {
+    return container.id;
+  }
+
+  // 5. Fallback
+  return 'unknown';
+}
 
 const ContainerMetricsChart = () => {
   const [chartData, setChartData] = useState(null);
   const [error, setError] = useState(null);
-
-  // Helper to convert bytes to MB with 2 decimals.
-  const bytesToMB = (bytes) => (bytes / (1024 * 1024)).toFixed(2);
 
   useEffect(() => {
     axios.get('http://localhost:8086/api/v1.3/subcontainers')
@@ -31,14 +57,13 @@ const ContainerMetricsChart = () => {
         const containersArray = Array.isArray(res.data)
           ? res.data
           : (typeof res.data === 'object' ? Object.values(res.data) : []);
-        
+
         const containerNames = [];
         const cpuUsages = [];
         const memUsages = [];
 
         containersArray.forEach((container) => {
-          // Use the first alias as the container name, or "unknown" if not available
-          const name = container.aliases && container.aliases.length > 0 ? container.aliases[0] : 'unknown';
+          const name = deriveContainerName(container);
 
           // Use the latest stat from the container's stats array
           if (container.stats && container.stats.length > 0) {
@@ -88,7 +113,6 @@ const ContainerMetricsChart = () => {
     return <div>Loading cAdvisor data...</div>;
   }
 
-  // Chart options configuration
   const options = {
     responsive: true,
     plugins: {
