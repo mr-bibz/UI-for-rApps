@@ -53,8 +53,9 @@ function calculateNetworkUsage(stats) {
   };
 }
 
-// Use a relative path so the effective endpoint is /api/containerStats
+// IMPORTANT: Use a relative route path so that the effective endpoint is '/api/containerStats'
 router.get('/', async (req, res) => {
+  console.log("containerStats route was called");
   try {
     const containers = await docker.listContainers();
     const statsPromises = containers.map(async (containerInfo) => {
