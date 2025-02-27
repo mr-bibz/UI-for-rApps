@@ -23,9 +23,11 @@ const ContainerMetrics = () => {
     const fetchMetrics = async () => {
       try {
         const response = await axios.get('http://cadvisor:8080/api/v1.3/subcontainers');
+        console.log('Response from cadvisor:', response.data);
         setContainers(response.data);
         setLoading(false);
       } catch (err) {
+        console.error('Error fetching cadvisor metrics:', err);
         setError(err.message || 'Error fetching metrics');
         setLoading(false);
       }
@@ -95,25 +97,36 @@ const ContainerMetrics = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredContainers.map((container) => {
-              const stats = container.stats?.[container.stats.length - 1] || {};
+          {filteredContainers.map((container, idx) => {
+              // Defensive checks:
+              const containerName = container.name || '(no name)';
+              const statsArray = container.stats || [];
+              const latestStats = statsArray[statsArray.length - 1] || {};
+              
+              // CPU usage:
+              const cpuTotal = latestStats.cpu?.usage?.total;
+              
+              // Memory usage:
+              const memUsage = latestStats.memory?.usage;
+              
+              // Network usage:
+              const rxBytes = latestStats.network?.rx_bytes;
+              const txBytes = latestStats.network?.tx_bytes;
+
+              // For the container name, avoid .replace() if `container.name` is missing
+              const displayName = containerName
+                .replace('/docker/', '')
+                .split('_')
+                .slice(1)
+                .join(' ') || containerName;
+
               return (
-                <TableRow key={container.id}>
-                  <TableCell>
-                    {container.name.replace('/docker/', '').split('_').slice(1).join(' ')}
-                  </TableCell>
-                  <TableCell align="right">
-                    {formatCpu(stats.cpu?.usage?.total)}
-                  </TableCell>
-                  <TableCell align="right">
-                    {formatBytes(stats.memory?.usage)}
-                  </TableCell>
-                  <TableCell align="right">
-                    {formatBytes(stats.network?.rx_bytes)}
-                  </TableCell>
-                  <TableCell align="right">
-                    {formatBytes(stats.network?.tx_bytes)}
-                  </TableCell>
+                <TableRow key={container.id || idx}>
+                  <TableCell>{displayName}</TableCell>
+                  <TableCell align="right">{formatCpu(cpuTotal)}</TableCell>
+                  <TableCell align="right">{formatBytes(memUsage)}</TableCell>
+                  <TableCell align="right">{formatBytes(rxBytes)}</TableCell>
+                  <TableCell align="right">{formatBytes(txBytes)}</TableCell>
                 </TableRow>
               );
             })}
