@@ -23,23 +23,28 @@ const ContainerMetricsChart = () => {
   const bytesToMB = (bytes) => (bytes / (1024 * 1024)).toFixed(2);
 
   useEffect(() => {
-    axios.get('/api/v1.3/subcontainers')
+    axios.get('http://localhost:8085/api/v1.3/subcontainers')
       .then((res) => {
         console.log('cAdvisor raw data:', res.data);
+        
+        // Convert response to an array if it isn’t already
+        const containersArray = Array.isArray(res.data)
+          ? res.data
+          : (typeof res.data === 'object' ? Object.values(res.data) : []);
+        
         const containerNames = [];
         const cpuUsages = [];
         const memUsages = [];
 
-        // Loop through each container returned by cAdvisor
-        res.data.forEach((container) => {
-          // Use the first alias as the container name
+        containersArray.forEach((container) => {
+          // Use the first alias as the container name, or "unknown" if not available
           const name = container.aliases && container.aliases.length > 0 ? container.aliases[0] : 'unknown';
 
           // Use the latest stat from the container's stats array
           if (container.stats && container.stats.length > 0) {
             const latestStat = container.stats[container.stats.length - 1];
 
-            // Convert CPU usage (nanoseconds) to seconds (for display)
+            // Convert CPU usage (nanoseconds) to seconds for display
             const cpuUsageSeconds = (latestStat.cpu.usage.total / 1e9).toFixed(2);
             // Convert memory usage from bytes to MB
             const memUsageMB = bytesToMB(latestStat.memory.usage);
