@@ -4,7 +4,7 @@ import { Container, Typography, Paper } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import Grid2 from '@mui/material/Grid2';
 
-import ContainerMetricsChart from './ContainerMetricsChart';
+import ContainerMetricsChart from '../components/ContainerMetricsChart';
 
 const Validation = () => {
   const { pipelineId } = useParams(); // If you need the pipelineId
