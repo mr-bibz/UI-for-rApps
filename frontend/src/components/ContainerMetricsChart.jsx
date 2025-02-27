@@ -23,7 +23,7 @@ const ContainerMetricsChart = () => {
   const bytesToMB = (bytes) => (bytes / (1024 * 1024)).toFixed(2);
 
   useEffect(() => {
-    axios.get('http://cadvisor:8080/api/v1.3/subcontainers')
+    axios.get('http://localhost:8085/api/v1.3/subcontainers')
       .then((res) => {
         console.log('cAdvisor raw data:', res.data);
         const containerNames = [];
