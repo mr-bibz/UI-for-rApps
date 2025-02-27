@@ -77,7 +77,7 @@ export const fetchAggregatedMetrics = () => axios.get(`${API_BASE_URL}/metrics/a
 /**
  * Fetch ContainerMetrics
  */
-export const fetchMetrics = () => axios.get(`${API_BASE_URL}/metrics/container/${pipelineId}`);
+export const fetchMetrics = () => axios.get(`${API_BASE_URL}/metrics/container`);
 
 
 /**
