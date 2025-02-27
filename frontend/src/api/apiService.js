@@ -74,11 +74,6 @@ export const fetchMonitoringData = (pipelineId) => axios.get(`${API_BASE_URL}/mo
  */
 export const fetchAggregatedMetrics = () => axios.get(`${API_BASE_URL}/metrics/aggregated`);
 
-/**
- * Fetch ContainerMetrics
- */
-export const fetchMetrics = () => axios.get(`${API_BASE_URL}/metrics/container`);
-
 
 /**
  * Fetch IntepretabilityMetrics
