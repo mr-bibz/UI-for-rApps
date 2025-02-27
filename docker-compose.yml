@@ -135,12 +135,14 @@ services:
   # cADVISOR (Official Image)
   ########################################
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
+    image: gcr.io/cadvisor/cadvisor:v0.47.2 
     container_name: cadvisor
     command: 
     - --enable_cors
     - --housekeeping_interval=10s
     - --max_housekeeping_interval=30s
+    - --docker_only=true
+    - --disable_metrics=percpu,tcp,udp,process,sched,resctrl
     volumes:
     - /:/rootfs:ro
     - /var/run:/var/run:rw
