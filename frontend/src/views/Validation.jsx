@@ -8,7 +8,7 @@ import InterpretabilityPanel from '../components/InterpretabilityPanel';
 import ContainerMetrics from '../components/ContainerMetrics';
 
 const Validation = () => {
-  const { pipelineId } = useParams();
+  const { pipelineId } = useParams(); // Fetch pipelineId from URL if needed
 
   return (
     <Container sx={{ mt: 4, mb: 4 }}>
@@ -21,13 +21,8 @@ const Validation = () => {
             <InterpretabilityPanel pipelineId={pipelineId} />
           </Paper>
         </Grid2>
-
-        {/* Render cAdvisor metrics */}
         <Grid2 item xs={12}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h5" gutterBottom>
-              Container Metrics
-            </Typography>
             <ContainerMetrics />
           </Paper>
         </Grid2>
