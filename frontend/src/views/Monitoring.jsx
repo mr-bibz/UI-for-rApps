@@ -119,25 +119,6 @@ const Monitoring = () => {
                 )}
             </Box>
           )}
-
-          {/* Show training metrics if present */}
-          {monitorData.trainingMetrics && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle1">Training Metrics</Typography>
-              <Typography>
-                Accuracy: {monitorData.trainingMetrics.accuracy}
-              </Typography>
-              <Typography>
-                Artifact Path: {monitorData.trainingMetrics.artifactPath}
-              </Typography>
-              <Typography>
-                Last Updated:{' '}
-                {monitorData.trainingMetrics.updatedAt
-                  ? new Date(monitorData.trainingMetrics.updatedAt).toLocaleString()
-                  : 'N/A'}
-              </Typography>
-            </Box>
-          )}
         </Paper>
       )}
     </Container>
