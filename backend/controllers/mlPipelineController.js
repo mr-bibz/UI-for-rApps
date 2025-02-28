@@ -236,6 +236,69 @@ exports.nifiCallback = async (req, res) => {
   }
 };
 
+exports.trainModel = async (req, res) => {
+  try {
+    const { pipelineId } = req.body;
+    if (!pipelineId) {
+      return res.status(400).json({ error: 'pipelineId is required.' });
+    }
+
+    // 1) (Optional) Find pipeline doc if you need details
+    let pipeline = await PipelineDefinition.findById(pipelineId);
+    if (!pipeline) {
+      return res.status(404).json({ error: 'Pipeline not found.' });
+    }
+
+    // 2) Run Spark job (like you do in trainModel)
+    // Example: "docker exec spark-master spark-submit ..."
+    const sparkCmd = `docker exec spark-master /opt/bitnami/spark/bin/spark-submit \
+      --master spark://spark-master:7077 /opt/jobs/default-spark-job.py --pipelineId ${pipelineId}`;
+
+    console.log('[trainModel] Running command:', sparkCmd);
+    const sparkResult = await runCommand(sparkCmd);
+    console.log('[trainModel] stdout:', sparkResult.stdout);
+    console.log('[trainModel] stderr:', sparkResult.stderr);
+
+    // 3) Simulate or retrieve training metrics
+    const accuracy = 0.95; // or parse from sparkResult
+    const artifactPath = `/usr/src/app/models/model_${pipelineId}`;
+
+    // 4) Store model info in MLModel (optional)
+    const newModel = await MLModel.create({
+      name: `model_${pipelineId}`,
+      version: '1.0',
+      accuracy,
+      artifactPath
+    });
+    console.log('[trainModel] Created new model =>', newModel._id);
+
+    // 5) Update pipeline doc with training metrics
+    pipeline.status = 'trained';
+    pipeline.lastRun = new Date();
+    pipeline.trainingMetrics = {
+      accuracy,
+      artifactPath,
+      updatedAt: new Date().toISOString()
+    };
+    pipeline.markModified('trainingMetrics');
+    await pipeline.save();
+
+    console.log('[trainModel] Updated pipeline =>', pipeline);
+
+    // 6) Return updated pipeline & logs to client
+    return res.json({
+      success: true,
+      pipelineId,
+      sparkLogs: sparkResult.stdout,
+      modelId: newModel._id,
+      pipeline
+    });
+  } catch (error) {
+    console.error('[trainModel] error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 /**
  * getPipelineStatus
  * GET /api/pipelines/:pipelineId/status
