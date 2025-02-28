@@ -13,14 +13,20 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-// Helper function to convert bytes to MB with 2 decimals.
 function bytesToMB(bytes) {
   return (bytes / (1024 * 1024)).toFixed(2);
 }
 
-// Docker-only fallback logic for container naming
+// Shorten any string if it's too long
+function shortenString(str, maxLength = 15) {
+  if (str.length > maxLength) {
+    return str.substring(0, maxLength) + '...';
+  }
+  return str;
+}
+
 function deriveContainerName(container) {
-  // 1. Docker Compose label
+  // 1. Check Docker Compose label (e.g. "nifi", "spark-master", "kafka")
   if (container.spec?.labels?.['com.docker.compose.service']) {
     return container.spec.labels['com.docker.compose.service'];
   }
@@ -30,14 +36,15 @@ function deriveContainerName(container) {
     return container.aliases[0];
   }
 
-  // 3. container.name
+  // 3. If container.name exists, strip out any "/docker/" prefix
   if (container.name) {
-    return container.name.replace(/^\/docker\//, '');
+    const rawName = container.name.replace(/^\/docker\//, '');
+    return rawName;
   }
 
-  // 4. container.id
+  // 4. If container.id exists, show the first 12 characters (like a short Docker ID)
   if (container.id) {
-    return container.id;
+    return container.id.substring(0, 12);
   }
 
   // 5. Fallback
@@ -51,9 +58,7 @@ const ContainerMetricsChart = () => {
   useEffect(() => {
     axios.get('http://localhost:8086/api/v1.3/subcontainers')
       .then((res) => {
-        console.log('cAdvisor raw data:', res.data);
-        
-        // Convert response to an array if it isn’t already
+        // cAdvisor might return an array or object, so convert to array
         const containersArray = Array.isArray(res.data)
           ? res.data
           : (typeof res.data === 'object' ? Object.values(res.data) : []);
@@ -63,15 +68,18 @@ const ContainerMetricsChart = () => {
         const memUsages = [];
 
         containersArray.forEach((container) => {
-          const name = deriveContainerName(container);
+          // Derive a meaningful name
+          let name = deriveContainerName(container);
+          // Truncate if too long
+          name = shortenString(name, 15);
 
-          // Use the latest stat from the container's stats array
+          // If container has stats
           if (container.stats && container.stats.length > 0) {
             const latestStat = container.stats[container.stats.length - 1];
 
-            // Convert CPU usage (nanoseconds) to seconds for display
+            // CPU usage: convert nanoseconds -> seconds
             const cpuUsageSeconds = (latestStat.cpu.usage.total / 1e9).toFixed(2);
-            // Convert memory usage from bytes to MB
+            // Memory usage: bytes -> MB
             const memUsageMB = bytesToMB(latestStat.memory.usage);
 
             containerNames.push(name);
@@ -80,7 +88,7 @@ const ContainerMetricsChart = () => {
           }
         });
 
-        // Prepare the Chart.js data object
+        // Chart.js data object
         const data = {
           labels: containerNames,
           datasets: [
@@ -120,6 +128,15 @@ const ContainerMetricsChart = () => {
       title: {
         display: true,
         text: 'Container Metrics from cAdvisor',
+      },
+    },
+    // Optional: rotate x-axis labels if they're still long
+    scales: {
+      x: {
+        ticks: {
+          maxRotation: 45,
+          minRotation: 0,
+        },
       },
     },
   };
