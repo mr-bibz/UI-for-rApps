@@ -16,28 +16,47 @@ const SideNav = () => {
       sx={{
         width: drawerWidth,
         flexShrink: 0,
-        ['& .MuiDrawer-paper']: {width: drawerWidth, boxSizing: 'border-box'},
-    }}
+        '& .MuiDrawer-paper': {
+          width: drawerWidth,
+          boxSizing: 'border-box',
+        },
+      }}
     >
-      <List>
+      <List
+        sx={{
+          // Optional top padding to push items down
+          pt: 2,
+          // Add vertical spacing between list items
+          '& .MuiListItem-root': {
+            mb: 2, // margin-bottom on each item
+          },
+          // Remove extra margin after the last item
+          '& .MuiListItem-root:last-child': {
+            mb: 0,
+          },
+        }}
+      >
         <ListItem button component={Link} to="/">
           <ListItemIcon>
             <DashboardIcon />
           </ListItemIcon>
           <ListItemText primary="Dashboard" />
         </ListItem>
+
         <ListItem button component={Link} to="/deployment">
           <ListItemIcon>
             <BuildIcon />
           </ListItemIcon>
           <ListItemText primary="Deployment" />
         </ListItem>
+
         <ListItem button component={Link} to="/monitoring">
           <ListItemIcon>
             <MonitorIcon />
           </ListItemIcon>
           <ListItemText primary="Monitoring" />
         </ListItem>
+
         <ListItem button component={Link} to="/validation">
           <ListItemIcon>
             <VerifiedIcon />
