@@ -282,7 +282,8 @@ exports.trainModel = async (req, res) => {
     };
     pipeline.markModified('trainingMetrics');
     await pipeline.save();
-
+    
+    pipeline = await PipelineDefinition.findById(pipelineId);
     console.log('[trainModel] Updated pipeline =>', pipeline);
 
     // 6) Return updated pipeline & logs to client
