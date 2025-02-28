@@ -10,7 +10,7 @@ const AppHeader = () => {
     >
       <Toolbar>
         <Typography variant="h6" noWrap component="div">
-          ML Pipeline UI
+          rApp ML Hub
         </Typography>
       </Toolbar>
     </AppBar>
