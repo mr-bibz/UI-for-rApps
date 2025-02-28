@@ -29,27 +29,30 @@ function shortenString(str, maxLength = 15) {
 
 // Attempt to derive a friendly container name
 function deriveContainerName(container) {
-  // 1. Docker Compose label
-  if (container.spec?.labels?.['com.docker.compose.service']) {
-    return container.spec.labels['com.docker.compose.service'];
+  const labels = container.spec?.labels || {};
+
+  // If your Docker Compose sets container_name: "nifi", cAdvisor might store it here:
+  if (labels['com.docker.compose.container-name']) {
+    return labels['com.docker.compose.container-name'];
   }
 
-  // 2. If aliases exist
-  if (container.aliases && container.aliases.length > 0) {
+  // Or if it’s just "com.docker.compose.service"
+  if (labels['com.docker.compose.service']) {
+    return labels['com.docker.compose.service'];
+  }
+
+  if (container.aliases?.length) {
     return container.aliases[0];
   }
 
-  // 3. container.name (strip "/docker/" prefix if present)
   if (container.name) {
     return container.name.replace(/^\/docker\//, '');
   }
 
-  // 4. container.id (short form)
   if (container.id) {
     return container.id.substring(0, 12);
   }
 
-  // 5. fallback
   return 'unknown';
 }
 
