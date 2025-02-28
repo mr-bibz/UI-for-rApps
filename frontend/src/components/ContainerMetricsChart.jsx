@@ -1,3 +1,4 @@
+// ContainerMetricsChart.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Bar } from 'react-chartjs-2';
@@ -13,11 +14,12 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
+// Convert bytes to MB
 function bytesToMB(bytes) {
   return (bytes / (1024 * 1024)).toFixed(2);
 }
 
-// Shorten any string if it's too long
+// Shorten container names if they're too long
 function shortenString(str, maxLength = 15) {
   if (str.length > maxLength) {
     return str.substring(0, maxLength) + '...';
@@ -25,29 +27,29 @@ function shortenString(str, maxLength = 15) {
   return str;
 }
 
+// Attempt to derive a friendly container name
 function deriveContainerName(container) {
-  // 1. Check Docker Compose label (e.g. "nifi", "spark-master", "kafka")
+  // 1. Docker Compose label
   if (container.spec?.labels?.['com.docker.compose.service']) {
     return container.spec.labels['com.docker.compose.service'];
   }
 
-  // 2. If aliases exist, use the first alias
+  // 2. If aliases exist
   if (container.aliases && container.aliases.length > 0) {
     return container.aliases[0];
   }
 
-  // 3. If container.name exists, strip out any "/docker/" prefix
+  // 3. container.name (strip "/docker/" prefix if present)
   if (container.name) {
-    const rawName = container.name.replace(/^\/docker\//, '');
-    return rawName;
+    return container.name.replace(/^\/docker\//, '');
   }
 
-  // 4. If container.id exists, show the first 12 characters (like a short Docker ID)
+  // 4. container.id (short form)
   if (container.id) {
     return container.id.substring(0, 12);
   }
 
-  // 5. Fallback
+  // 5. fallback
   return 'unknown';
 }
 
@@ -56,51 +58,99 @@ const ContainerMetricsChart = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // cAdvisor proxy must be accessible at this URL (e.g., via Nginx or port mapping)
     axios.get('http://localhost:8086/api/v1.3/subcontainers')
       .then((res) => {
-        // cAdvisor might return an array or object, so convert to array
         const containersArray = Array.isArray(res.data)
           ? res.data
           : (typeof res.data === 'object' ? Object.values(res.data) : []);
 
+        // Arrays for each metric
         const containerNames = [];
         const cpuUsages = [];
         const memUsages = [];
+        const memLimits = [];
+        const memPercents = [];
+        const netRx = [];
+        const netTx = [];
 
         containersArray.forEach((container) => {
-          // Derive a meaningful name
+          if (!container.stats || container.stats.length === 0) return;
+
+          const latestStat = container.stats[container.stats.length - 1];
           let name = deriveContainerName(container);
-          // Truncate if too long
           name = shortenString(name, 15);
 
-          // If container has stats
-          if (container.stats && container.stats.length > 0) {
-            const latestStat = container.stats[container.stats.length - 1];
+          // CPU usage: convert nanoseconds -> seconds
+          const cpuUsageSeconds = (latestStat.cpu.usage.total / 1e9).toFixed(2);
 
-            // CPU usage: convert nanoseconds -> seconds
-            const cpuUsageSeconds = (latestStat.cpu.usage.total / 1e9).toFixed(2);
-            // Memory usage: bytes -> MB
-            const memUsageMB = bytesToMB(latestStat.memory.usage);
+          // Memory usage
+          const memUsageMB = bytesToMB(latestStat.memory.usage);
 
-            containerNames.push(name);
-            cpuUsages.push(parseFloat(cpuUsageSeconds));
-            memUsages.push(parseFloat(memUsageMB));
+          // Memory limit (from container.spec if available)
+          let memLimitMB = 0;
+          if (container.spec?.memory?.limit) {
+            memLimitMB = (container.spec.memory.limit / (1024 * 1024)).toFixed(2);
           }
+          // Compute memory percentage
+          const memPercent = memLimitMB > 0
+            ? ((memUsageMB / memLimitMB) * 100).toFixed(2)
+            : 0;
+
+            // Network usage (sum across all interfaces)
+          let rxBytes = 0;
+          let txBytes = 0;
+          if (latestStat.network?.interfaces) {
+            latestStat.network.interfaces.forEach((iface) => {
+              rxBytes += iface.rx_bytes;
+              txBytes += iface.tx_bytes;
+            });
+          }
+          const rxKB = (rxBytes / 1024).toFixed(2);
+          const txKB = (txBytes / 1024).toFixed(2);
+
+          containerNames.push(name);
+          cpuUsages.push(parseFloat(cpuUsageSeconds));
+          memUsages.push(parseFloat(memUsageMB));
+          memLimits.push(parseFloat(memLimitMB));
+          memPercents.push(parseFloat(memPercent));
+          netRx.push(parseFloat(rxKB));
+          netTx.push(parseFloat(txKB));
         });
 
-        // Chart.js data object
+        // Build the multi-series bar chart data
         const data = {
           labels: containerNames,
           datasets: [
             {
-              label: 'CPU Usage (seconds)',
+              label: 'CPU Usage (sec)',
               data: cpuUsages,
-              backgroundColor: 'rgba(75, 192, 192, 0.6)',
+              backgroundColor: 'rgba(75,192,192,0.6)',
             },
             {
-              label: 'Memory Usage (MB)',
+              label: 'Mem Usage (MB)',
               data: memUsages,
-              backgroundColor: 'rgba(153, 102, 255, 0.6)',
+              backgroundColor: 'rgba(153,102,255,0.6)',
+            },
+            {
+              label: 'Mem Limit (MB)',
+              data: memLimits,
+              backgroundColor: 'rgba(255,159,64,0.6)',
+            },
+            {
+              label: 'Mem %',
+              data: memPercents,
+              backgroundColor: 'rgba(255,99,132,0.6)',
+            },
+            {
+              label: 'Net RX (KB)',
+              data: netRx,
+              backgroundColor: 'rgba(54,162,235,0.6)',
+            },
+            {
+              label: 'Net TX (KB)',
+              data: netTx,
+              backgroundColor: 'rgba(255,206,86,0.6)',
             },
           ],
         };
@@ -121,6 +171,7 @@ const ContainerMetricsChart = () => {
     return <div>Loading cAdvisor data...</div>;
   }
 
+  // Chart options
   const options = {
     responsive: true,
     plugins: {
@@ -130,11 +181,10 @@ const ContainerMetricsChart = () => {
         text: 'Container Metrics from cAdvisor',
       },
     },
-    // Optional: rotate x-axis labels if they're still long
     scales: {
       x: {
         ticks: {
-          maxRotation: 45,
+          maxRotation: 45, // Tilt labels if needed
           minRotation: 0,
         },
       },

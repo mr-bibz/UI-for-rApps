@@ -15,7 +15,7 @@ const Validation = () => {
         <Grid2 item xs={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
-              Container Metrics Chart
+              Resource Metrics
             </Typography>
             <ContainerMetricsChart />
           </Paper>
