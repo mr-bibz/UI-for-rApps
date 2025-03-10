@@ -52,7 +52,7 @@ const Dashboard = () => {
   return (
     <Container sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
-        RAN Telemetry Pipelines Dashboard
+        ORAN  Pipelines Dashboard
       </Typography>
       
       {/* Button to navigate to Create Pipeline Page */}
